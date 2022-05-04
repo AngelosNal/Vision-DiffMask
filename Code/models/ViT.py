@@ -140,30 +140,30 @@ class ViT(pl.LightningModule):
         self._calculate_loss(batch, mode="test")
 
 
-import urllib.request
-from urllib.error import HTTPError
-# Github URL where saved models are stored for this tutorial
-base_url = "https://raw.githubusercontent.com/phlippe/saved_models/main/"
-# Files to download
-pretrained_files = ["tutorial15/ViT.ckpt", "tutorial15/tensorboards/ViT/events.out.tfevents.ViT",
-                    "tutorial5/tensorboards/ResNet/events.out.tfevents.resnet"]
-# Create checkpoint path if it doesn't exist yet
-os.makedirs(CHECKPOINT_PATH, exist_ok=True)
-
-# For each file, check whether it already exists. If not, try downloading it.
-for file_name in pretrained_files:
-    file_path = os.path.join(CHECKPOINT_PATH, file_name.split("/",1)[1])
-    if "/" in file_name.split("/",1)[1]:
-        os.makedirs(file_path.rsplit("/",1)[0], exist_ok=True)
-    if not os.path.isfile(file_path):
-        file_url = base_url + file_name
-        print(f"Downloading {file_url}...")
-        try:
-            urllib.request.urlretrieve(file_url, file_path)
-        except HTTPError as e:
-            print("Something went wrong. Please try to download the file from the GDrive folder, or contact the author with the full output including the following error:\n", e)
-
 if __name__ == '__main__':
+    import urllib.request
+    from urllib.error import HTTPError
+    # Github URL where saved models are stored for this tutorial
+    base_url = "https://raw.githubusercontent.com/phlippe/saved_models/main/"
+    # Files to download
+    pretrained_files = ["tutorial15/ViT.ckpt", "tutorial15/tensorboards/ViT/events.out.tfevents.ViT",
+                        "tutorial5/tensorboards/ResNet/events.out.tfevents.resnet"]
+    # Create checkpoint path if it doesn't exist yet
+    os.makedirs(CHECKPOINT_PATH, exist_ok=True)
+
+    # For each file, check whether it already exists. If not, try downloading it.
+    for file_name in pretrained_files:
+        file_path = os.path.join(CHECKPOINT_PATH, file_name.split("/",1)[1])
+        if "/" in file_name.split("/",1)[1]:
+            os.makedirs(file_path.rsplit("/",1)[0], exist_ok=True)
+        if not os.path.isfile(file_path):
+            file_url = base_url + file_name
+            print(f"Downloading {file_url}...")
+            try:
+                urllib.request.urlretrieve(file_url, file_path)
+            except HTTPError as e:
+                print("Something went wrong. Please try to download the file from the GDrive folder, or contact the author with the full output including the following error:\n", e)
+
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     test_transform = transforms.Compose([transforms.ToTensor(),
                                      transforms.Normalize([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784])
