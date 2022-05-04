@@ -24,6 +24,16 @@ class ImageDataModule(pl.LightningDataModule):
         self.data_dir = data_dir
         self.batch_size = batch_size
 
+    def add_transforms(self, noise: bool, rotation: bool, blur: bool):
+    # TODO: not sure about the order and if we should apply the same transforms both in train and test set
+    # TODO: check what transforms are applied by the model
+        if noise:
+            self.transform.transforms.append(AddGaussianNoise(0., 1.))
+        if rotation:
+            self.transform.transforms.append(transforms.RandomRotation(20))
+        if blur:
+            self.transform.transforms.append(transforms.GaussianBlur(3))
+
     def prepare_data(self):
         raise NotImplementedError
 
@@ -46,15 +56,8 @@ class MNISTDataModule(ImageDataModule):
         super().__init__(data_dir, batch_size)
 
         # Set the transforms
-        # TODO: not sure about the order and if we should apply the same transforms both in train and test set
-        # TODO: check what transforms are applied by the model
         self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        if noise:
-            self.transform.transforms.append(AddGaussianNoise(0., 1.))
-        if rotation:
-            self.transform.transforms.append(transforms.RandomRotation(20))
-        if blur:
-            self.transform.transforms.append(transforms.GaussianBlur(3))
+        self.add_transforms(noise, rotation, blur)
 
     def prepare_data(self):
         # Download MNIST
@@ -78,16 +81,9 @@ class CIFAR10DataModule(ImageDataModule):
         super().__init__(data_dir, batch_size)
 
         # Set the transforms
-        # TODO: not sure about the order and if we should apply the same transforms both in train and test set
-        # TODO: check what transforms are applied by the model
         self.transform = transforms.Compose([transforms.ToTensor(),
                                              transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))])
-        if noise:
-            self.transform.transforms.append(AddGaussianNoise(0., 1.))
-        if rotation:
-            self.transform.transforms.append(transforms.RandomRotation(20))
-        if blur:
-            self.transform.transforms.append(transforms.GaussianBlur(3))
+        self.add_transforms(noise, rotation, blur)
 
     def prepare_data(self):
         # Download CIFAR10
@@ -103,5 +99,3 @@ class CIFAR10DataModule(ImageDataModule):
         # Set the test data
         if stage == "test" or stage is None:
             self.test_data = CIFAR10(self.data_dir, train=False, transform=self.transform)
-
-
