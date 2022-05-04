@@ -1,24 +1,20 @@
-import numpy as np
 import torch
 from .distributions import RectifiedStreched, BinaryConcrete
 
 
 class MLPGate(torch.nn.Module):
-    """
-    Implements an MLP gate classifier.
-    """
     def __init__(self, input_size, hidden_size, bias=True):
         """
-        Initializes the MLP gate classifier.
-        :param input_size: The number of input features.
-        :param hidden_size: The number of hidden units.
-        :param bias: Whether to use a bias.
-
-        This is simply an MLP with the following structure;
+        This is an MLP with the following structure;
         Linear(input_size, hidden_size), Tanh(), Linear(hidden_size, 1)
         The bias of the last layer is set to 5.0 to start with high probability
         of keeping states (fundamental for good convergence as the initialized
         DIFFMASK has not learned what to mask yet).
+
+        Args:
+            input_size: The number of input features.
+            hidden_size: The number of hidden units.
+            bias: Whether to use a bias.
         """
         super().__init__()
         self.f = torch.nn.Sequential(
@@ -34,19 +30,21 @@ class MLPGate(torch.nn.Module):
 
 
 class MLPMaxGate(torch.nn.Module):
-    """
-    Implements an MLP max gate classifier.
-    :param input_size: The number of input features.
-    :param hidden_size: The number of hidden units.
-    :param bias: Whether to use a bias.
-
-    This is simply an MLP with the following structure;
-    Linear(input_size, hidden_size), Tanh(), Linear(hidden_size, 1)
-    The bias of the last layer is set to 5.0 to start with high probability
-    of keeping states (fundamental for good convergence as the initialized
-    DIFFMASK has not learned what to mask yet).
-    """
     def __init__(self, input_size, hidden_size, max_activation=10, bias=True):
+        """
+        This is an MLP with the following structure;
+        Linear(input_size, hidden_size), Tanh(), Linear(hidden_size, 1)
+        The bias of the last layer is set to 5.0 to start with high probability
+        of keeping states (fundamental for good convergence as the initialized
+        DIFFMASK has not learned what to mask yet).
+        It also uses a scaler for the output of the activation function.
+
+        Args:
+            input_size: The number of input features.
+            hidden_size: The number of hidden units.
+            max_activation: A scaler for the output of the activation function.
+            bias: Whether to use a bias.
+        """
         super().__init__()
         self.f = torch.nn.Sequential(
             torch.nn.utils.weight_norm(torch.nn.Linear(input_size, hidden_size)),
@@ -97,7 +95,7 @@ class DiffMaskGateInput(torch.nn.Module):
                 "placeholder", torch.zeros((1, 1, hidden_size,)),
             )
 
-    def forward(self, hidden_states, mask, layer_pred):
+    def forward(self, hidden_states, layer_pred):
 
         logits = torch.cat(
             [
@@ -171,7 +169,7 @@ class DiffMaskGateHidden(torch.nn.Module):
                 "placeholder", torch.zeros((num_hidden_layers, 1, 1, hidden_size,)),
             )
 
-    def forward(self, hidden_states, mask, layer_pred):
+    def forward(self, hidden_states, layer_pred):
 
         if layer_pred is not None:
             logits = self.g_hat[layer_pred](hidden_states[layer_pred])
@@ -201,91 +199,6 @@ class DiffMaskGateHidden(torch.nn.Module):
             * (1 - gates),
             gates.squeeze(-1),
             expected_L0.squeeze(-1),
-            gates_full,
-            expected_L0_full,
-        )
-
-
-class PerSampleGate(torch.nn.Module):
-    def __init__(
-        self,
-        hidden_size: int,
-        num_hidden_layers: int,
-        max_position_embeddings: int,
-        batch_size: int = 1,
-        placeholder: bool = False,
-        init_vector: torch.Tensor = None,
-    ):
-        super().__init__()
-
-        self.logits = torch.nn.Parameter(
-            torch.full((batch_size, max_position_embeddings, num_hidden_layers), 5.0)
-        )
-
-        if placeholder:
-            self.placeholder = torch.nn.Parameter(
-                torch.nn.init.xavier_normal_(
-                    torch.empty(
-                        batch_size,
-                        num_hidden_layers,
-                        max_position_embeddings,
-                        hidden_size,
-                    )
-                )
-                if init_vector is None
-                else init_vector.view(1, num_hidden_layers, 1, hidden_size).repeat(
-                    batch_size, 1, max_position_embeddings, 1
-                )
-            )
-        else:
-            self.register_buffer(
-                "placeholder", torch.zeros((1, num_hidden_layers, 1, hidden_size))
-            )
-
-
-class PerSampleDiffMaskGate(PerSampleGate):
-    def forward(self, hidden_states, mask, layer_pred):
-
-        dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(self.logits, 0.2), self.logits),
-            l=-0.2,
-            r=1.0,
-        )
-
-        gates_full = dist.rsample()
-        expected_L0_full = dist.log_expected_L0()
-
-        gates = gates_full[..., layer_pred]
-        expected_L0 = expected_L0_full[..., layer_pred]
-
-        return (
-            hidden_states[layer_pred] * gates.unsqueeze(-1)
-            + self.placeholder[:, layer_pred, : hidden_states[layer_pred].shape[-2]]
-            * (1 - gates).unsqueeze(-1),
-            gates,
-            expected_L0,
-            gates_full,
-            expected_L0_full,
-        )
-
-
-class PerSampleREINFORCEGate(PerSampleGate):
-    def forward(self, hidden_states, mask, layer_pred):
-
-        dist = torch.distributions.Bernoulli(logits=self.logits)
-
-        gates_full = dist.sample()
-        expected_L0_full = dist.log_prob(1.0)
-
-        gates = gates_full[..., layer_pred]
-        expected_L0 = expected_L0_full[..., layer_pred]
-
-        return (
-            hidden_states[layer_pred] * gates.unsqueeze(-1)
-            + self.placeholder[:, layer_pred, : hidden_states[layer_pred].shape[-2]]
-            * (1 - gates).unsqueeze(-1),
-            gates,
-            expected_L0,
             gates_full,
             expected_L0_full,
         )
