@@ -18,11 +18,23 @@ class AddGaussianNoise(object):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 
+class Unnest(object):
+    def __call__(self, x):
+        return x['pixel_values'][0]
+
+
 class ImageDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir: str = 'Data/', batch_size: int = 32):
+    def __init__(self, data_dir: str = 'Data/', batch_size: int = 32, feature_extractor: object = None,
+                 noise: bool = False, rotation: bool = False, blur: bool = False):
         super().__init__()
+
         self.data_dir = data_dir
         self.batch_size = batch_size
+
+        # Set the transforms
+        assert feature_extractor is not None, "Feature extractor was not specified"
+        self.transform = transforms.Compose([feature_extractor, Unnest()])
+        self.add_transforms(noise, rotation, blur)
 
     def add_transforms(self, noise: bool, rotation: bool, blur: bool):
     # TODO: not sure about the order and if we should apply the same transforms both in train and test set
@@ -51,13 +63,11 @@ class ImageDataModule(pl.LightningDataModule):
 
 
 class MNISTDataModule(ImageDataModule):
-    def __init__(self, data_dir: str = "Data/", batch_size: int = 32, noise: bool = False, rotation: bool = False,
-                 blur: bool = False):
-        super().__init__(data_dir, batch_size)
+    def __init__(self, data_dir: str = "Data/", batch_size: int = 32, feature_extractor: object = None,
+                 noise: bool = False, rotation: bool = False, blur: bool = False):
+        super().__init__(data_dir, batch_size, feature_extractor, noise, rotation, blur)
 
-        # Set the transforms
-        self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        self.add_transforms(noise, rotation, blur)
+        # TODO: We need to find a ViTFeatureExtractor (or create one) for MNIST
 
     def prepare_data(self):
         # Download MNIST
@@ -76,14 +86,9 @@ class MNISTDataModule(ImageDataModule):
 
 
 class CIFAR10DataModule(ImageDataModule):
-    def __init__(self, data_dir: str = "Data/", batch_size: int = 32, noise: bool = False, rotation: bool = False,
-                 blur: bool = False):
-        super().__init__(data_dir, batch_size)
-
-        # Set the transforms
-        self.transform = transforms.Compose([transforms.ToTensor(),
-                                             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))])
-        self.add_transforms(noise, rotation, blur)
+    def __init__(self, data_dir: str = "Data/", batch_size: int = 32, feature_extractor: object = None,
+                 noise: bool = False, rotation: bool = False, blur: bool = False):
+        super().__init__(data_dir, batch_size, feature_extractor, noise, rotation, blur)
 
     def prepare_data(self):
         # Download CIFAR10
