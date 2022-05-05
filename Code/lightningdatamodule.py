@@ -19,6 +19,9 @@ class AddGaussianNoise(object):
 
 
 class Unnest(object):
+    """
+    A class to use after ViTFeatureExtractor in transforms to unnest the tensor.
+    """
     def __call__(self, x):
         return x['pixel_values'][0]
 
@@ -32,7 +35,8 @@ class ImageDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
 
         # Set the transforms
-        assert feature_extractor is not None, "Feature extractor was not specified"
+        assert feature_extractor is not None, "Feature extractor was not specified."
+        # TODO: We may need to create another Unnest for other feature extractors than ViTFeatureExtractor
         self.transform = transforms.Compose([feature_extractor, Unnest()])
         self.add_transforms(noise, rotation, blur)
 
