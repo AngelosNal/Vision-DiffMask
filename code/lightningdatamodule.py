@@ -28,11 +28,12 @@ class Unnest(object):
 
 class ImageDataModule(pl.LightningDataModule):
     def __init__(self, data_dir: str = 'Data/', batch_size: int = 32, feature_extractor: object = None,
-                 noise: bool = False, rotation: bool = False, blur: bool = False):
+                 noise: bool = False, rotation: bool = False, blur: bool = False, num_workers: int = 4):
         super().__init__()
 
         self.data_dir = data_dir
         self.batch_size = batch_size
+        self.num_workers = num_workers
 
         # Set the transforms
         assert feature_extractor is not None, "Feature extractor was not specified."
@@ -57,13 +58,13 @@ class ImageDataModule(pl.LightningDataModule):
         raise NotImplementedError
 
     def train_dataloader(self):
-        return DataLoader(self.train_data, batch_size=self.batch_size)
+        return DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.val_data, batch_size=self.batch_size)
+        return DataLoader(self.val_data, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.test_data, batch_size=self.batch_size)
+        return DataLoader(self.test_data, batch_size=self.batch_size, num_workers=self.num_workers)
 
 
 class MNISTDataModule(ImageDataModule):

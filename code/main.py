@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     feature_extractor = ViTFeatureExtractor.from_pretrained("tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
                                                              return_tensors="pt")
-    dm = CIFAR10DataModule(batch_size=2, feature_extractor=feature_extractor)
+    dm = CIFAR10DataModule(batch_size=64, feature_extractor=feature_extractor)
     dm.prepare_data()
     dm.setup()
 
@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
 
     # # Let's test the model
-    trainer = pl.Trainer()
+    trainer = pl.Trainer(gpus=1 if torch.cuda.is_available() else 0)
     classification_net = ImageClassificationNet(model, 0.01)
     # TODO: need to fix strange error
     trainer.test(classification_net, dm)
