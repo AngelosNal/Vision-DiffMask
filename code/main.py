@@ -21,9 +21,7 @@ if __name__ == '__main__':
         outputs = model(input, output_hidden_states=False, output_attentions=False)
         print(outputs.logits)
 
-
     # # Let's test the model
     trainer = pl.Trainer(gpus=1 if torch.cuda.is_available() else 0)
     classification_net = ImageClassificationNet(model, 0.01)
-    # TODO: need to fix strange error
     trainer.test(classification_net, dm)
