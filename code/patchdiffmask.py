@@ -1,5 +1,3 @@
-import torch.nn.functional as F
-import torch.optim as optim
 import pytorch_lightning as pl
 from models.gates import *
 from vitutils import *
@@ -51,7 +49,6 @@ class ImageInterpretationNet(pl.LightningModule):
     def forward_explainer(self, x, attribution=False):
         outputs = self.model(x, output_hidden_states=True)
         logits_orig, hidden_states = outputs.logits, outputs.hidden_states
-
 
         # (logits_orig,), hidden_states = vit_getter(self.model, x)
 
@@ -221,15 +218,15 @@ class ImageInterpretationNet(pl.LightningModule):
         return optimizers, schedulers
 
     def optimizer_step(
-        self,
-        epoch,
-        batch_idx,
-        optimizer,
-        optimizer_idx=0,
-        optimizer_closure=None,
-        on_tpu=False,
-        using_native_amp=False,
-        using_lbfgs=False,
+            self,
+            epoch,
+            batch_idx,
+            optimizer,
+            optimizer_idx=0,
+            optimizer_closure=None,
+            on_tpu=False,
+            using_native_amp=False,
+            using_lbfgs=False,
     ):
         if optimizer_idx == 0:
             optimizer.step(closure=optimizer_closure)
