@@ -7,7 +7,7 @@ from patchdiffmask import ImageInterpretationNet
 if __name__ == '__main__':
 
     model = ViTForImageClassification.from_pretrained("tanlq/vit-base-patch16-224-in21k-finetuned-cifar10")
-    interpretation_net = ImageInterpretationNet(model, 0.01)
+    interpretation_net = ImageInterpretationNet(model)
 
     feature_extractor = ViTFeatureExtractor.from_pretrained("tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
                                                              return_tensors="pt")
