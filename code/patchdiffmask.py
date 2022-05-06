@@ -11,8 +11,13 @@ from transformers import (
 
 
 class ImageInterpretationNet(pl.LightningModule):
-    def __init__(self, model, lr: float = 3e-4, eps: float = 0.1, eps_valid: float = 0.8, acc_valid: float = 0.75,
-                 lr_placeholder: float = 1e-3, lr_alpha: float = 0.3):
+    def __init__(self, model,
+                 lr: float = 3e-4,
+                 eps: float = 0.1,
+                 eps_valid: float = 0.8,
+                 acc_valid: float = 0.75,
+                 lr_placeholder: float = 1e-3,
+                 lr_alpha: float = 0.3):
         super().__init__()
 
         self.save_hyperparameters(ignore=['model'])
@@ -92,7 +97,7 @@ class ImageInterpretationNet(pl.LightningModule):
     def forward(self, x):
         return self.model(x).logits
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx):
         x, y = batch
 
         (
@@ -182,89 +187,76 @@ class ImageInterpretationNet(pl.LightningModule):
         return outputs_dict
 
     def configure_optimizers(self):
-        optimizers = optim.RMSprop(
+        optimizers = [
+            LookaheadRMSprop(
                 params=[
                     {
                         "params": self.gate.g_hat.parameters(),
                         "lr": self.hparams.lr,
                     },
+                    {
+                        "params": self.gate.placeholder.parameters()
+                        if isinstance(self.gate.placeholder, torch.nn.ParameterList)
+                        else [self.gate.placeholder],
+                        "lr": self.hparams.lr_placeholder,
+                    },
                 ],
                 centered=True,
-            )
+            ),
+            LookaheadRMSprop(
+                params=[self.alpha]
+                if isinstance(self.alpha, torch.Tensor)
+                else self.alpha.parameters(),
+                lr=self.hparams.lr_alpha,
+            ),
+        ]
 
-        return optimizers
-    #
-    # def configure_optimizers(self):
-    #     optimizers = [
-    #         optim.RMSprop(
-    #             params=[
-    #                 {
-    #                     "params": self.gate.g_hat.parameters(),
-    #                     "lr": self.hparams.lr,
-    #                 },
-    #                 {
-    #                     "params": self.gate.placeholder.parameters()
-    #                     if isinstance(self.gate.placeholder, torch.nn.ParameterList)
-    #                     else [self.gate.placeholder],
-    #                     "lr": self.hparams.lr_placeholder,
-    #                 },
-    #             ],
-    #             centered=True,
-    #         ),
-    #         optim.RMSprop(
-    #             params=[self.alpha]
-    #             if isinstance(self.alpha, torch.Tensor)
-    #             else self.alpha.parameters(),
-    #             lr=self.hparams.lr_alpha,
-    #         ),
-    #     ]
-    #
-    #     schedulers = [
-    #         {
-    #             "scheduler": get_constant_schedule_with_warmup(optimizers[0], 12 * 100),
-    #             "interval": "step",
-    #         },
-    #         get_constant_schedule(optimizers[1]),
-    #     ]
-    #     return optimizers, schedulers
-    #
-    # def optimizer_step(
-    #     self,
-    #     epoch,
-    #     batch_idx,
-    #     optimizer,
-    #     optimizer_idx=0,
-    #     optimizer_closure=None,
-    #     on_tpu=False,
-    #     using_native_amp=False,
-    #     using_lbfgs=False,
-    # ) -> None:
-    #     if optimizer_idx == 0:
-    #         optimizer.step()
-    #         optimizer.zero_grad()
-    #         for g in optimizer.param_groups:
-    #             for p in g["params"]:
-    #                 p.grad = None
-    #
-    #     elif optimizer_idx == 1:
-    #         for i in range(len(self.alpha)):
-    #             if self.alpha[i].grad:
-    #                 self.alpha[i].grad *= -1
-    #
-    #         optimizer.step()
-    #         optimizer.zero_grad()
-    #         for g in optimizer.param_groups:
-    #             for p in g["params"]:
-    #                 p.grad = None
-    #
-    #         for i in range(len(self.alpha)):
-    #             self.alpha[i].data = torch.where(
-    #                 self.alpha[i].data < 0,
-    #                 torch.full_like(self.alpha[i].data, 0),
-    #                 self.alpha[i].data,
-    #             )
-    #             self.alpha[i].data = torch.where(
-    #                 self.alpha[i].data > 200,
-    #                 torch.full_like(self.alpha[i].data, 200),
-    #                 self.alpha[i].data,
-    #             )
+        schedulers = [
+            {
+                "scheduler": get_constant_schedule_with_warmup(optimizers[0], 12 * 100),
+                "interval": "step",
+            },
+            get_constant_schedule(optimizers[1]),
+        ]
+        return optimizers, schedulers
+
+    def optimizer_step(
+        self,
+        epoch,
+        batch_idx,
+        optimizer,
+        optimizer_idx=0,
+        optimizer_closure=None,
+        on_tpu=False,
+        using_native_amp=False,
+        using_lbfgs=False,
+    ):
+        if optimizer_idx == 0:
+            optimizer.step(closure=optimizer_closure)
+            optimizer.zero_grad()
+            for g in optimizer.param_groups:
+                for p in g["params"]:
+                    p.grad = None
+
+        elif optimizer_idx == 1:
+            for i in range(len(self.alpha)):
+                if self.alpha[i].grad:
+                    self.alpha[i].grad *= -1
+
+            optimizer.step(closure=optimizer_closure)
+            optimizer.zero_grad()
+            for g in optimizer.param_groups:
+                for p in g["params"]:
+                    p.grad = None
+
+            for i in range(len(self.alpha)):
+                self.alpha[i].data = torch.where(
+                    self.alpha[i].data < 0,
+                    torch.full_like(self.alpha[i].data, 0),
+                    self.alpha[i].data,
+                )
+                self.alpha[i].data = torch.where(
+                    self.alpha[i].data > 200,
+                    torch.full_like(self.alpha[i].data, 200),
+                    self.alpha[i].data,
+                )
