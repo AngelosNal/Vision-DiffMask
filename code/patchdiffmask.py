@@ -33,6 +33,16 @@ class ImageInterpretationNet(pl.LightningModule):
             ]
         )
 
+        self.register_buffer(
+            "running_acc", torch.ones((self.model.config.num_hidden_layers + 2,))
+        )
+        self.register_buffer(
+            "running_l0", torch.ones((self.model.config.num_hidden_layers + 2,))
+        )
+        self.register_buffer(
+            "running_steps", torch.zeros((self.model.config.num_hidden_layers + 2,))
+        )
+
     def forward_explainer(self, x, attribution=False):
         outputs = self.model(x, output_hidden_states=True)
         logits_orig, hidden_states = outputs.logits, outputs.hidden_states
@@ -40,7 +50,8 @@ class ImageInterpretationNet(pl.LightningModule):
 
         # (logits_orig,), hidden_states = vit_getter(self.model, x)
 
-        layer_pred = torch.randint(len(hidden_states), ()).item()
+        # layer_pred = torch.randint(len(hidden_states), ()).item()
+        layer_pred = 4
         layer_drop = 0
 
         (
@@ -63,7 +74,7 @@ class ImageInterpretationNet(pl.LightningModule):
                     + [None] * (len(hidden_states) - layer_drop - 1)
             )
 
-            (logits,), _ = vit_setter(
+            logits, _ = vit_setter(
                 self.model, x, new_hidden_states
             )
 

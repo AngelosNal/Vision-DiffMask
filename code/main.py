@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     feature_extractor = ViTFeatureExtractor.from_pretrained("tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
                                                              return_tensors="pt")
-    dm = CIFAR10DataModule(batch_size=1, feature_extractor=feature_extractor)
+    dm = CIFAR10DataModule(batch_size=8, feature_extractor=feature_extractor)
     # dm.prepare_data()
     # dm.setup()
     # #

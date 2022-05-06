@@ -45,10 +45,13 @@ def vit_setter(model, inputs_dict, hidden_states):
 
     def get_hook(i):
         def hook(module, inputs, outputs=None):
+            # print(i)
+            # print('inputs', inputs)
+            # print('outputs', outputs)
             if i == 0:
                 if hidden_states[i] is not None:
-                    hidden_states_.append(hidden_states[i][1:])
-                    return hidden_states[i]
+                    hidden_states_.append(hidden_states[i][:, 1:, :])
+                    return hidden_states_[-1]
                 else:
                     hidden_states_.append(outputs)
 
@@ -60,9 +63,9 @@ def vit_setter(model, inputs_dict, hidden_states):
                     hidden_states_.append(inputs[0])
 
             elif i == len(model.vit.encoder.layer) + 1:
-                if hidden_states[i] is not None:
-                    hidden_states_.append(hidden_states[i])
-                    return (hidden_states[i],) + outputs[1:]
+                if hidden_states[-1] is not None:
+                    hidden_states_.append(hidden_states[-1])
+                    return (hidden_states[-1],) + outputs[1:]
                 else:
                     hidden_states_.append(outputs[0])
 
@@ -82,7 +85,7 @@ def vit_setter(model, inputs_dict, hidden_states):
     )
 
     try:
-        outputs = model(inputs_dict)
+        outputs = model(inputs_dict).logits
     finally:
         for handle in handles:
             handle.remove()
