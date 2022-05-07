@@ -15,5 +15,8 @@ module load Anaconda3/2021.05
 - Install the environment:
 ```conda env create -f environment.yml```
 
+- Activate the environment:
+```conda activate dl2```
+
 - Run the code:
 ```python main.py```
