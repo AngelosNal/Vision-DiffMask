@@ -136,6 +136,7 @@ class ImageInterpretationNet(pl.LightningModule):
             "r_acc": self.running_acc[layer_pred],
             "r_l0": self.running_l0[layer_pred],
             "r_steps": self.running_steps[layer_pred],
+            "debug_loss" : loss.mean(-1),
         }
 
         outputs_dict = {

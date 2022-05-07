@@ -342,3 +342,5 @@ cython_debug/
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python,jupyternotebooks,visualstudiocode,pycharm
+lightning_logs/
+Code/checkpoints/
