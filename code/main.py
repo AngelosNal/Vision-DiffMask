@@ -1,20 +1,56 @@
+import argparse
 import pytorch_lightning as pl
-import torch
 
 from datamodules import CIFAR10DataModule
 from models.interpretation import ImageInterpretationNet
 from transformers import ViTFeatureExtractor, ViTForImageClassification
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-if __name__ == '__main__':
+def main(args):
+    # Load pre-trained Transformer
+    model = ViTForImageClassification.from_pretrained(args.vit_model)
 
-    model = ViTForImageClassification.from_pretrained("tanlq/vit-base-patch16-224-in21k-finetuned-cifar10")
-    interpretation_net = ImageInterpretationNet(model)
+    # Load CIFAR10 datamodule
+    dm = CIFAR10DataModule(
+        batch_size=8,
+        feature_extractor=ViTFeatureExtractor.from_pretrained(
+            args.vit_model, return_tensors="pt"
+        ),
+    )
 
-    feature_extractor = ViTFeatureExtractor.from_pretrained("tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
-                                                             return_tensors="pt")
-    dm = CIFAR10DataModule(batch_size=8, feature_extractor=feature_extractor)
+    # Create Vision DiffMask for the model
+    diffmask = ImageInterpretationNet(model)
 
-    trainer = pl.Trainer(gpus=1 if torch.cuda.is_available() else 0)
+    # Train
+    trainer = pl.Trainer(
+        accelerator="auto",
+        callbacks=[ModelCheckpoint(dirpath="checkpoints")],
+        logger=TensorBoardLogger(save_dir="tb_logs", default_hp_metric=False),
+        max_epochs=args.num_epochs,
+    )
 
-    trainer.fit(interpretation_net, dm)
+    trainer.fit(diffmask, dm)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--vit-model",
+        type=str,
+        default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
+        help="Pre-trained Vision Transformer (ViT) model to load.",
+    )
+
+    parser.add_argument(
+        "--num-epochs",
+        type=int,
+        default=5,
+        help="Number of epochs to train.",
+    )
+
+    args = parser.parse_args()
+
+    main(args)
