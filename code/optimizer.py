@@ -1,9 +1,10 @@
-# Lookahead implementation from https://github.com/rwightman/pytorch-image-models/blob/master/timm/optim/lookahead.py
-
-""" Lookahead Optimizer Wrapper.
-Implementation modified from: https://github.com/alphadl/lookahead.pytorch
-Paper: `Lookahead Optimizer: k steps forward, 1 step back` - https://arxiv.org/abs/1907.08610
 """
+Lookahead Optimizer implementation
+
+* modifed from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/optim/lookahead.py
+* paper: https://arxiv.org/abs/1907.08610
+"""
+
 import torch
 import torch.optim as optim
 
@@ -115,11 +116,15 @@ def LookaheadAdam(
 
 
 def LookaheadRAdam(
-    params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, lalpha=0.5, k=6
+    params,
+    lr=1e-3,
+    betas=(0.9, 0.999),
+    eps=1e-8,
+    weight_decay=0,
+    lalpha=0.5,
+    k=6,
 ):
-    return Lookahead(
-        optim.RAdam(params, lr, betas, eps, weight_decay), lalpha, k
-    )
+    return Lookahead(optim.RAdam(params, lr, betas, eps, weight_decay), lalpha, k)
 
 
 def LookaheadRMSprop(
