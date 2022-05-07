@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 import torch
 
-from gates import DiffMaskGateInput
+from .gates import DiffMaskGateInput
 from utils.setters import vit_setter
 from utils.metrics import accuracy_precision_recall_f1
 from optimizer import LookaheadRMSprop
