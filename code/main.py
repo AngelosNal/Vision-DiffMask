@@ -1,8 +1,10 @@
-import torch
-from transformers import ViTFeatureExtractor, ViTForImageClassification
-from lightningdatamodule import CIFAR10DataModule
 import pytorch_lightning as pl
-from patchdiffmask import ImageInterpretationNet
+import torch
+
+from datamodules import CIFAR10DataModule
+from models.interpretation import ImageInterpretationNet
+from transformers import ViTFeatureExtractor, ViTForImageClassification
+
 
 if __name__ == '__main__':
 

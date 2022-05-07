@@ -1,5 +1,6 @@
 import torch
-from .distributions import RectifiedStreched, BinaryConcrete
+
+from utils.distributions import RectifiedStreched, BinaryConcrete
 
 
 class MLPGate(torch.nn.Module):

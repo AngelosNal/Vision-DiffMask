@@ -1,9 +1,11 @@
 import pytorch_lightning as pl
+import torch
+
 from torch.utils.data import random_split, DataLoader
 from torchvision.datasets import MNIST, CIFAR10
 from torchvision import transforms
+
 from typing import Optional
-import torch
 
 
 class AddGaussianNoise(object):
