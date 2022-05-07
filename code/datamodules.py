@@ -53,7 +53,7 @@ class ImageDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        data_dir: str = "Data/",
+        data_dir: str = "data/",
         batch_size: int = 32,
         feature_extractor: object = None,
         noise: bool = False,
@@ -123,7 +123,7 @@ class MNISTDataModule(ImageDataModule):
 
     def __init__(
         self,
-        data_dir: str = "Data/",
+        data_dir: str = "data/",
         batch_size: int = 32,
         feature_extractor: object = None,
         noise: bool = False,
@@ -165,7 +165,7 @@ class CIFAR10DataModule(ImageDataModule):
 
     def __init__(
         self,
-        data_dir: str = "Data/",
+        data_dir: str = "data/",
         batch_size: int = 32,
         feature_extractor: object = None,
         noise: bool = False,
