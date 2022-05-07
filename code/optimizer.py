@@ -1,5 +1,5 @@
 """
-Lookahead Optimizer implementation
+Lookahead Optimizer implementation.
 
 * modifed from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/optim/lookahead.py
 * paper: https://arxiv.org/abs/1907.08610
@@ -38,7 +38,7 @@ class Lookahead(Optimizer):
                 param_state["slow_buffer"] = torch.empty_like(fast_p.data)
                 param_state["slow_buffer"].copy_(fast_p.data)
             slow = param_state["slow_buffer"]
-            slow.add_(group["lookahead_alpha"], fast_p.data - slow)
+            slow.add_(fast_p.data - slow, alpha=group["lookahead_alpha"])
             fast_p.data.copy_(slow)
 
     def sync_lookahead(self):
