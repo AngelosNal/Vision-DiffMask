@@ -1,3 +1,9 @@
+"""
+Mask prediction models.
+
+* modified from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/models/gates.py
+"""
+
 import torch
 
 from utils.distributions import RectifiedStreched, BinaryConcrete
@@ -84,7 +90,11 @@ class DiffMaskGateInput(torch.nn.Module):
         if placeholder:
             self.placeholder = torch.nn.Parameter(
                 torch.nn.init.xavier_normal_(
-                    torch.empty(1, max_position_embeddings, hidden_size,)
+                    torch.empty(
+                        1,
+                        max_position_embeddings,
+                        hidden_size,
+                    )
                 )
                 if init_vector is None
                 else init_vector.view(1, 1, hidden_size).repeat(
@@ -93,7 +103,14 @@ class DiffMaskGateInput(torch.nn.Module):
             )
         else:
             self.register_buffer(
-                "placeholder", torch.zeros((1, 1, hidden_size,)),
+                "placeholder",
+                torch.zeros(
+                    (
+                        1,
+                        1,
+                        hidden_size,
+                    )
+                ),
             )
 
     def forward(self, hidden_states, layer_pred):
@@ -109,7 +126,9 @@ class DiffMaskGateInput(torch.nn.Module):
         )
 
         dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits), l=-0.2, r=1.0,
+            BinaryConcrete(torch.full_like(logits, 0.2), logits),
+            l=-0.2,
+            r=1.0,
         )
 
         gates_full = dist.rsample().cumprod(-1)
@@ -120,7 +139,10 @@ class DiffMaskGateInput(torch.nn.Module):
 
         return (
             hidden_states[0] * gates.unsqueeze(-1)
-            + self.placeholder[:, : hidden_states[0].shape[-2],]
+            + self.placeholder[
+                :,
+                : hidden_states[0].shape[-2],
+            ]
             * (1 - gates).unsqueeze(-1),
             gates,
             expected_L0,
@@ -155,7 +177,11 @@ class DiffMaskGateHidden(torch.nn.Module):
                 [
                     torch.nn.Parameter(
                         torch.nn.init.xavier_normal_(
-                            torch.empty(1, max_position_embeddings, hidden_size,)
+                            torch.empty(
+                                1,
+                                max_position_embeddings,
+                                hidden_size,
+                            )
                         )
                         if init_vector is None
                         else init_vector.view(1, 1, hidden_size).repeat(
@@ -167,7 +193,15 @@ class DiffMaskGateHidden(torch.nn.Module):
             )
         else:
             self.register_buffer(
-                "placeholder", torch.zeros((num_hidden_layers, 1, 1, hidden_size,)),
+                "placeholder",
+                torch.zeros(
+                    (
+                        num_hidden_layers,
+                        1,
+                        1,
+                        hidden_size,
+                    )
+                ),
             )
 
     def forward(self, hidden_states, layer_pred):
@@ -180,7 +214,9 @@ class DiffMaskGateHidden(torch.nn.Module):
             )
 
         dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits), l=-0.2, r=1.0,
+            BinaryConcrete(torch.full_like(logits, 0.2), logits),
+            l=-0.2,
+            r=1.0,
         )
 
         gates_full = dist.rsample()

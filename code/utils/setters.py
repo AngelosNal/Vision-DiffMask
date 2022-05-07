@@ -1,3 +1,10 @@
+"""
+Setters for Transformer hidden layers.
+
+* modified from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/utils/getter_setter.py
+"""
+
+
 def vit_setter(model, inputs_dict, hidden_states):
 
     hidden_states_ = []

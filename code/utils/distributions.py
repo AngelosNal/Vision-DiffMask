@@ -1,3 +1,9 @@
+"""
+Hard Concrete & Rectified Strected distributions implementation.
+
+* copied from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/models/distributions.py
+"""
+
 import torch
 
 

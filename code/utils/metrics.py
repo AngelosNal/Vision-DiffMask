@@ -1,3 +1,9 @@
+"""
+Accuracy metrics for logging.
+
+* copied from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/utils/util.py
+"""
+
 import torch
 
 
