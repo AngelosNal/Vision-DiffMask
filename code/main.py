@@ -8,7 +8,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-def main(args):
+def main(args: argparse.Namespace):
     # Load pre-trained Transformer
     model = ViTForImageClassification.from_pretrained(args.vit_model)
 
@@ -27,7 +27,9 @@ def main(args):
     trainer = pl.Trainer(
         accelerator="auto",
         callbacks=[ModelCheckpoint()],
-        logger=TensorBoardLogger(name=args.vit_model, default_hp_metric=False),
+        logger=TensorBoardLogger(
+            "lightning_logs", name=args.vit_model, default_hp_metric=False
+        ),
         max_epochs=args.num_epochs,
     )
 
@@ -45,10 +47,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--num_epochs",
-        type=int,
-        default=5,
-        help="Number of epochs to train.",
+        "--num_epochs", type=int, default=5, help="Number of epochs to train.",
     )
 
     args = parser.parse_args()

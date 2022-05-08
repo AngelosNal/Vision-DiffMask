@@ -6,8 +6,13 @@ Accuracy metrics for logging.
 
 import torch
 
+from torch import Tensor
+from typing import Tuple
 
-def accuracy_precision_recall_f1(y_pred, y_true, average=True):
+
+def accuracy_precision_recall_f1(
+    y_pred: Tensor, y_true: Tensor, average: bool = True
+) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     M = confusion_matrix(y_pred, y_true)
 
     tp = M.diagonal(dim1=-2, dim2=-1).float()
@@ -25,6 +30,7 @@ def accuracy_precision_recall_f1(y_pred, y_true, average=True):
         f1_den == 0, torch.zeros_like(tp), 2 * (precision * recall) / f1_den
     )
 
+    # noinspection PyTypeChecker
     return ((y_pred == y_true).float().mean(-1),) + (
         tuple(e.mean(-1) for e in (precision, recall, f1))
         if average
@@ -32,7 +38,7 @@ def accuracy_precision_recall_f1(y_pred, y_true, average=True):
     )
 
 
-def confusion_matrix(y_pred, y_true):
+def confusion_matrix(y_pred: Tensor, y_true: Tensor) -> Tensor:
     device = y_pred.device
     labels = max(y_pred.max().item() + 1, y_true.max().item() + 1)
 

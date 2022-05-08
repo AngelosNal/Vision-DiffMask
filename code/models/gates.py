@@ -5,12 +5,15 @@ Mask prediction models.
 """
 
 import torch
+import torch.nn as nn
 
+from torch import Tensor
+from typing import Optional, Tuple
 from utils.distributions import RectifiedStreched, BinaryConcrete
 
 
-class MLPGate(torch.nn.Module):
-    def __init__(self, input_size, hidden_size, bias=True):
+class MLPGate(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, bias: bool = True):
         """
         This is an MLP with the following structure;
         Linear(input_size, hidden_size), Tanh(), Linear(hidden_size, 1)
@@ -24,20 +27,28 @@ class MLPGate(torch.nn.Module):
             bias: Whether to use a bias.
         """
         super().__init__()
-        self.f = torch.nn.Sequential(
-            torch.nn.utils.weight_norm(torch.nn.Linear(input_size, hidden_size)),
-            torch.nn.Tanh(),
-            torch.nn.utils.weight_norm(torch.nn.Linear(hidden_size, 1, bias=bias)),
+
+        self.f = nn.Sequential(
+            nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
+            nn.Tanh(),
+            nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
         )
+
         if bias:
             self.f[-1].bias.data[:] = 5.0
 
-    def forward(self, *args):
+    def forward(self, *args: Tensor) -> Tensor:
         return self.f(torch.cat(args, -1))
 
 
-class MLPMaxGate(torch.nn.Module):
-    def __init__(self, input_size, hidden_size, max_activation=10, bias=True):
+class MLPMaxGate(nn.Module):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        max_activation: int = 10,
+        bias: bool = True,
+    ):
         """
         This is an MLP with the following structure;
         Linear(input_size, hidden_size), Tanh(), Linear(hidden_size, 1)
@@ -53,34 +64,35 @@ class MLPMaxGate(torch.nn.Module):
             bias: Whether to use a bias.
         """
         super().__init__()
-        self.f = torch.nn.Sequential(
-            torch.nn.utils.weight_norm(torch.nn.Linear(input_size, hidden_size)),
-            torch.nn.Tanh(),
-            torch.nn.utils.weight_norm(torch.nn.Linear(hidden_size, 1, bias=bias)),
-            torch.nn.Tanh(),
+
+        self.f = nn.Sequential(
+            nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
+            nn.Tanh(),
+            nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
+            nn.Tanh(),
         )
-        self.bias = torch.nn.Parameter(torch.tensor(5.0))
+        self.bias = nn.Parameter(torch.tensor(5.0))
         self.max_activation = max_activation
 
-    def forward(self, *args):
+    def forward(self, *args: Tensor) -> Tensor:
         return self.f(torch.cat(args, -1)) * self.max_activation + self.bias
 
 
-class DiffMaskGateInput(torch.nn.Module):
+class DiffMaskGateInput(nn.Module):
     def __init__(
         self,
         hidden_size: int,
         hidden_attention: int,
         num_hidden_layers: int,
         max_position_embeddings: int,
-        gate_fn: torch.nn.Module = MLPMaxGate,
+        gate_fn: nn.Module = MLPMaxGate,
         gate_bias: bool = True,
         placeholder: bool = False,
-        init_vector: torch.Tensor = None,
+        init_vector: Tensor = None,
     ):
         super().__init__()
 
-        self.g_hat = torch.nn.ModuleList(
+        self.g_hat = nn.ModuleList(
             [
                 gate_fn(hidden_size * 2, hidden_attention, bias=gate_bias)
                 for _ in range(num_hidden_layers)
@@ -88,13 +100,9 @@ class DiffMaskGateInput(torch.nn.Module):
         )
 
         if placeholder:
-            self.placeholder = torch.nn.Parameter(
-                torch.nn.init.xavier_normal_(
-                    torch.empty(
-                        1,
-                        max_position_embeddings,
-                        hidden_size,
-                    )
+            self.placeholder = nn.Parameter(
+                nn.init.xavier_normal_(
+                    torch.empty((1, max_position_embeddings, hidden_size))
                 )
                 if init_vector is None
                 else init_vector.view(1, 1, hidden_size).repeat(
@@ -103,18 +111,12 @@ class DiffMaskGateInput(torch.nn.Module):
             )
         else:
             self.register_buffer(
-                "placeholder",
-                torch.zeros(
-                    (
-                        1,
-                        1,
-                        hidden_size,
-                    )
-                ),
+                "placeholder", torch.zeros((1, 1, hidden_size)),
             )
 
-    def forward(self, hidden_states, layer_pred):
-
+    def forward(
+        self, hidden_states: Tuple[Tensor], layer_pred: Optional[int]
+    ) -> Tuple[Tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
         logits = torch.cat(
             [
                 self.g_hat[i](hidden_states[0], hidden_states[i])
@@ -126,9 +128,7 @@ class DiffMaskGateInput(torch.nn.Module):
         )
 
         dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits),
-            l=-0.2,
-            r=1.0,
+            BinaryConcrete(torch.full_like(logits, 0.2), logits), l=-0.2, r=1.0,
         )
 
         gates_full = dist.rsample().cumprod(-1)
@@ -139,10 +139,7 @@ class DiffMaskGateInput(torch.nn.Module):
 
         return (
             hidden_states[0] * gates.unsqueeze(-1)
-            + self.placeholder[
-                :,
-                : hidden_states[0].shape[-2],
-            ]
+            + self.placeholder[:, : hidden_states[0].shape[-2]]
             * (1 - gates).unsqueeze(-1),
             gates,
             expected_L0,
@@ -151,21 +148,21 @@ class DiffMaskGateInput(torch.nn.Module):
         )
 
 
-class DiffMaskGateHidden(torch.nn.Module):
+class DiffMaskGateHidden(nn.Module):
     def __init__(
         self,
         hidden_size: int,
         hidden_attention: int,
         num_hidden_layers: int,
         max_position_embeddings: int,
-        gate_fn: torch.nn.Module = MLPMaxGate,
+        gate_fn: nn.Module = MLPMaxGate,
         gate_bias: bool = True,
         placeholder: bool = False,
-        init_vector: torch.Tensor = None,
+        init_vector: Tensor = None,
     ):
         super().__init__()
 
-        self.g_hat = torch.nn.ModuleList(
+        self.g_hat = nn.ModuleList(
             [
                 gate_fn(hidden_size, hidden_attention, bias=gate_bias)
                 for _ in range(num_hidden_layers)
@@ -173,15 +170,11 @@ class DiffMaskGateHidden(torch.nn.Module):
         )
 
         if placeholder:
-            self.placeholder = torch.nn.ParameterList(
+            self.placeholder = nn.ParameterList(
                 [
-                    torch.nn.Parameter(
-                        torch.nn.init.xavier_normal_(
-                            torch.empty(
-                                1,
-                                max_position_embeddings,
-                                hidden_size,
-                            )
+                    nn.Parameter(
+                        nn.init.xavier_normal_(
+                            torch.empty((1, max_position_embeddings, hidden_size))
                         )
                         if init_vector is None
                         else init_vector.view(1, 1, hidden_size).repeat(
@@ -193,19 +186,12 @@ class DiffMaskGateHidden(torch.nn.Module):
             )
         else:
             self.register_buffer(
-                "placeholder",
-                torch.zeros(
-                    (
-                        num_hidden_layers,
-                        1,
-                        1,
-                        hidden_size,
-                    )
-                ),
+                "placeholder", torch.zeros((num_hidden_layers, 1, 1, hidden_size)),
             )
 
-    def forward(self, hidden_states, layer_pred):
-
+    def forward(
+        self, hidden_states: Tuple[Tensor], layer_pred: Optional[int]
+    ) -> Tuple[Tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
         if layer_pred is not None:
             logits = self.g_hat[layer_pred](hidden_states[layer_pred])
         else:
@@ -214,9 +200,7 @@ class DiffMaskGateHidden(torch.nn.Module):
             )
 
         dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits),
-            l=-0.2,
-            r=1.0,
+            BinaryConcrete(torch.full_like(logits, 0.2), logits), l=-0.2, r=1.0,
         )
 
         gates_full = dist.rsample()
@@ -227,12 +211,10 @@ class DiffMaskGateHidden(torch.nn.Module):
             expected_L0_full if layer_pred is not None else expected_L0_full[..., :1]
         )
 
+        layer_pred = layer_pred or 0  # equiv to "layer_pred if layer_pred else 0"
         return (
-            hidden_states[layer_pred if layer_pred is not None else 0] * gates
-            + self.placeholder[layer_pred if layer_pred is not None else 0][
-                :,
-                : hidden_states[layer_pred if layer_pred is not None else 0].shape[-2],
-            ]
+            hidden_states[layer_pred] * gates
+            + self.placeholder[layer_pred][:, : hidden_states[layer_pred].shape[-2]]
             * (1 - gates),
             gates.squeeze(-1),
             expected_L0.squeeze(-1),

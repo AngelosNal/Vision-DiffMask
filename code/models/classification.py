@@ -6,9 +6,12 @@ Pytorch Lightning module for Image Classification
 
 import pytorch_lightning as pl
 import torch.nn.functional as F
-import torch.optim as optim
 
+from torch import Tensor
+from torch.optim import AdamW, Optimizer
+from torch.optim.lr_scheduler import _LRScheduler, MultiStepLR
 from transformers import ViTForImageClassification
+from typing import List, Tuple
 
 
 class ImageClassificationNet(pl.LightningModule):
@@ -26,19 +29,18 @@ class ImageClassificationNet(pl.LightningModule):
 
         self.model = model
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
 
-    def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=self.lr)
-
-        lr_scheduler = optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=[100, 150], gamma=0.1
-        )
+    def configure_optimizers(self) -> Tuple[List[Optimizer], List[_LRScheduler]]:
+        optimizer = AdamW(self.parameters(), lr=self.lr)
+        lr_scheduler = MultiStepLR(optimizer, milestones=[100, 150], gamma=0.1)
 
         return [optimizer], [lr_scheduler]
 
-    def _calculate_loss(self, batch, mode="train"):
+    def _calculate_loss(
+        self, batch: Tuple[Tensor, Tensor], mode: str = "train",
+    ) -> Tensor:
         imgs, labels = batch
 
         preds = self.model(imgs).logits
@@ -50,13 +52,13 @@ class ImageClassificationNet(pl.LightningModule):
 
         return loss
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: Tuple[Tensor, Tensor], _: Tensor) -> Tensor:
         loss = self._calculate_loss(batch, mode="train")
 
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: Tuple[Tensor, Tensor], _: Tensor):
         self._calculate_loss(batch, mode="val")
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch: Tuple[Tensor, Tensor], _: Tensor):
         self._calculate_loss(batch, mode="test")

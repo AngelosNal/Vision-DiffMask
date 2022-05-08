@@ -1,16 +1,16 @@
 import pytorch_lightning as pl
 import torch
 
+from abc import abstractmethod, ABCMeta
 from torch import Tensor
 from torch.utils.data import random_split, DataLoader
 from torchvision.datasets import MNIST, CIFAR10
 from torchvision import transforms
 from transformers.feature_extraction_utils import BatchFeature
-
 from typing import Optional
 
 
-class AddGaussianNoise(object):
+class AddGaussianNoise:
     """Add Gaussian noise to an image.
 
     Args:
@@ -31,14 +31,14 @@ class AddGaussianNoise(object):
         )
 
 
-class Unnest(object):
-    """Unnest the output after the ViTFeatureExtractor"""
+class UnNest:
+    """Un-nest the output after the ViTFeatureExtractor"""
 
     def __call__(self, x: BatchFeature) -> Tensor:
         return x["pixel_values"][0]
 
 
-class ImageDataModule(pl.LightningDataModule):
+class ImageDataModule(pl.LightningDataModule, metaclass=ABCMeta):
     """Abstract Pytorch Lightning DataModule for image datasets.
 
     Args:
@@ -47,7 +47,7 @@ class ImageDataModule(pl.LightningDataModule):
         feature_extractor (object): ViT feature extractor
         noise (bool): whether to add noise to the images
         rotation (bool): whether to add random rotation to the images
-        blure (bool): whether to add blur to the images
+        blur (bool): whether to add blur to the images
         num_workers (int): number of workers for train/val/test dataloaders
     """
 
@@ -69,8 +69,8 @@ class ImageDataModule(pl.LightningDataModule):
 
         # Set the transforms
         assert feature_extractor is not None, "Feature extractor was not specified."
-        # TODO: We may need to create another Unnest for other feature extractors than ViTFeatureExtractor
-        self.transform = transforms.Compose([feature_extractor, Unnest()])
+        # TODO: We may need to create another UnNest for other feature extractors than ViTFeatureExtractor
+        self.transform = transforms.Compose([feature_extractor, UnNest()])
         self.add_transforms(noise, rotation, blur)
 
     def add_transforms(self, noise: bool, rotation: bool, blur: bool):
@@ -83,28 +83,30 @@ class ImageDataModule(pl.LightningDataModule):
         if blur:
             self.transform.transforms.append(transforms.GaussianBlur(3))
 
+    @abstractmethod
     def prepare_data(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
+    @abstractmethod
     def setup(self, stage: Optional[str] = None):
-        raise NotImplementedError
+        raise NotImplementedError()
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self.train_data,
             batch_size=self.batch_size,
-            shuffle=True,
             num_workers=self.num_workers,
+            shuffle=True,
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.val_data, batch_size=self.batch_size, num_workers=self.num_workers
+            self.val_data, batch_size=self.batch_size, num_workers=self.num_workers,
         )
 
-    def test_dataloader(self):
+    def test_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.test_data, batch_size=self.batch_size, num_workers=self.num_workers
+            self.test_data, batch_size=self.batch_size, num_workers=self.num_workers,
         )
 
 
@@ -117,7 +119,7 @@ class MNISTDataModule(ImageDataModule):
         feature_extractor (object): ViT feature extractor
         noise (bool): whether to add noise to the images
         rotation (bool): whether to add random rotation to the images
-        blure (bool): whether to add blur to the images
+        blur (bool): whether to add blur to the images
         num_workers (int): number of workers for the train/val/test dataloaders
     """
 
@@ -129,8 +131,11 @@ class MNISTDataModule(ImageDataModule):
         noise: bool = False,
         rotation: bool = False,
         blur: bool = False,
+        num_workers: int = 4,
     ):
-        super().__init__(data_dir, batch_size, feature_extractor, noise, rotation, blur)
+        super().__init__(
+            data_dir, batch_size, feature_extractor, noise, rotation, blur, num_workers
+        )
 
         # TODO: We need to find a ViTFeatureExtractor (or create one) for MNIST
 
@@ -159,7 +164,7 @@ class CIFAR10DataModule(ImageDataModule):
         feature_extractor (object): ViT feature extractor
         noise (bool): whether to add noise to the images
         rotation (bool): whether to add random rotation to the images
-        blure (bool): whether to add blur to the images
+        blur (bool): whether to add blur to the images
         num_workers (int): number of workers for the train/val/test dataloaders
     """
 

@@ -9,11 +9,17 @@ import torch
 import torch.optim as optim
 
 from collections import defaultdict
+from torch import Tensor
 from torch.optim.optimizer import Optimizer
+from typing import Callable, Iterable, Optional, Tuple, Union
+
+
+_params_type = Union[Iterable[Tensor], Iterable[dict]]
 
 
 class Lookahead(Optimizer):
-    def __init__(self, base_optimizer, alpha=0.5, k=6):
+    # noinspection PyMissingConstructor
+    def __init__(self, base_optimizer: Optimizer, alpha: float = 0.5, k: int = 6):
         if not 0.0 <= alpha <= 1.0:
             raise ValueError(f"Invalid slow update rate: {alpha}")
         if not 1 <= k:
@@ -29,7 +35,7 @@ class Lookahead(Optimizer):
             for group in self.param_groups:
                 group.setdefault(name, default)
 
-    def update_slow(self, group):
+    def update_slow(self, group: dict):
         for fast_p in group["params"]:
             if fast_p.grad is None:
                 continue
@@ -45,7 +51,7 @@ class Lookahead(Optimizer):
         for group in self.param_groups:
             self.update_slow(group)
 
-    def step(self, closure=None):
+    def step(self, closure: Optional[Callable[[], float]] = None) -> Optional[float]:
         # print(self.k)
         # assert id(self.param_groups) == id(self.base_optimizer.param_groups)
         loss = self.base_optimizer.step(closure)
@@ -55,7 +61,7 @@ class Lookahead(Optimizer):
                 self.update_slow(group)
         return loss
 
-    def state_dict(self):
+    def state_dict(self) -> dict:
         fast_state_dict = self.base_optimizer.state_dict()
         slow_state = {
             (id(k) if isinstance(k, torch.Tensor) else k): v
@@ -69,7 +75,7 @@ class Lookahead(Optimizer):
             "param_groups": param_groups,
         }
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: dict):
         fast_state_dict = {
             "state": state_dict["state"],
             "param_groups": state_dict["param_groups"],
@@ -101,14 +107,14 @@ class Lookahead(Optimizer):
 
 
 def LookaheadAdam(
-    params,
-    lr=1e-3,
-    betas=(0.9, 0.999),
-    eps=1e-08,
-    weight_decay=0,
-    amsgrad=False,
-    lalpha=0.5,
-    k=6,
+    params: _params_type,
+    lr: float = 1e-3,
+    betas: Tuple[float, float] = (0.9, 0.999),
+    eps: float = 1e-08,
+    weight_decay: float = 0,
+    amsgrad: bool = False,
+    lalpha: float = 0.5,
+    k: int = 6,
 ):
     return Lookahead(
         torch.optim.Adam(params, lr, betas, eps, weight_decay, amsgrad), lalpha, k
@@ -116,27 +122,27 @@ def LookaheadAdam(
 
 
 def LookaheadRAdam(
-    params,
-    lr=1e-3,
-    betas=(0.9, 0.999),
-    eps=1e-8,
-    weight_decay=0,
-    lalpha=0.5,
-    k=6,
+    params: _params_type,
+    lr: float = 1e-3,
+    betas: Tuple[float, float] = (0.9, 0.999),
+    eps: float = 1e-8,
+    weight_decay: float = 0,
+    lalpha: float = 0.5,
+    k: int = 6,
 ):
     return Lookahead(optim.RAdam(params, lr, betas, eps, weight_decay), lalpha, k)
 
 
 def LookaheadRMSprop(
-    params,
-    lr=1e-2,
-    alpha=0.99,
-    eps=1e-08,
-    weight_decay=0,
-    momentum=0,
-    centered=False,
-    lalpha=0.5,
-    k=6,
+    params: _params_type,
+    lr: float = 1e-2,
+    alpha: float = 0.99,
+    eps: float = 1e-08,
+    weight_decay: float = 0,
+    momentum: float = 0,
+    centered: bool = False,
+    lalpha: float = 0.5,
+    k: int = 6,
 ):
     return Lookahead(
         torch.optim.RMSprop(params, lr, alpha, eps, weight_decay, momentum, centered),
