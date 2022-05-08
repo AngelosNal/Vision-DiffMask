@@ -16,20 +16,20 @@ def vit_setter(
 ) -> Tuple[Tensor, Tuple[Tensor]]:
     hidden_states_ = []
 
-    def input_post_hook(_: Module, __: tuple, outputs: tuple) -> Optional[Tensor]:
+    def input_post_hook(_: Module, __: tuple, outputs: Optional[tuple] = None) -> Optional[Tensor]:
         input_state = hidden_states[0]
-        if input_state:
+        if input_state is not None:
             hidden_states_.append(input_state[:, 1:])
             return hidden_states_[-1]
         else:
             hidden_states_.append(outputs)
 
     def get_hook(layer_idx: int, post: bool) -> Callable:
-        def hook(_: Module, inputs: tuple, outputs: tuple) -> Optional[tuple]:
+        def hook(_: Module, inputs: tuple, outputs: Optional[tuple] = None) -> Optional[tuple]:
             src_tensor = outputs if post else inputs
             curr_state = hidden_states[layer_idx]
 
-            if curr_state:
+            if curr_state is not None:
                 hidden_states_.append(curr_state)
                 return (curr_state,) + src_tensor[1:]
             else:
