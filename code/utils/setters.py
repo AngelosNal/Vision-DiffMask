@@ -5,55 +5,52 @@ Setters for Transformer hidden layers.
 """
 
 
-def vit_setter(model, inputs_dict, hidden_states):
+from torch import Tensor
+from torch.nn import Module
+from transformers import ViTForImageClassification
+from typing import Callable, List, Optional, Tuple
 
+
+def vit_setter(
+    model: ViTForImageClassification, x: Tensor, hidden_states: List[Optional[Tensor]]
+) -> Tuple[Tensor, Tuple[Tensor]]:
     hidden_states_ = []
 
-    def get_hook(i):
-        def hook(module, inputs, outputs=None):
-            # print(i)
-            # print('inputs', inputs)
-            # print('outputs', outputs)
-            if i == 0:
-                if hidden_states[i] is not None:
-                    hidden_states_.append(hidden_states[i][:, 1:, :])
-                    return hidden_states_[-1]
-                else:
-                    hidden_states_.append(outputs)
+    def input_post_hook(_: Module, __: tuple, outputs: tuple) -> Optional[Tensor]:
+        input_state = hidden_states[0]
+        if input_state:
+            hidden_states_.append(input_state[:, 1:])
+            return hidden_states_[-1]
+        else:
+            hidden_states_.append(outputs)
 
-            elif 1 <= i <= len(model.vit.encoder.layer):
-                if hidden_states[i] is not None:
-                    hidden_states_.append(hidden_states[i])
-                    return (hidden_states[i],) + inputs[1:]
-                else:
-                    hidden_states_.append(inputs[0])
+    def get_hook(layer_idx: int, post: bool) -> Callable:
+        def hook(_: Module, inputs: tuple, outputs: tuple) -> Optional[tuple]:
+            src_tensor = outputs if post else inputs
+            curr_state = hidden_states[layer_idx]
 
-            elif i == len(model.vit.encoder.layer) + 1:
-                if hidden_states[-1] is not None:
-                    hidden_states_.append(hidden_states[-1])
-                    return (hidden_states[-1],) + outputs[1:]
-                else:
-                    hidden_states_.append(outputs[0])
+            if curr_state:
+                hidden_states_.append(curr_state)
+                return (curr_state,) + src_tensor[1:]
+            else:
+                hidden_states_.append(src_tensor[0])
 
         return hook
 
     handles = (
-        [model.vit.embeddings.patch_embeddings.register_forward_hook(get_hook(0))]
+        [model.vit.embeddings.patch_embeddings.register_forward_hook(input_post_hook)]
         + [
-            layer.register_forward_pre_hook(get_hook(i + 1))
+            layer.register_forward_pre_hook(get_hook(i, post=False))
             for i, layer in enumerate(model.vit.encoder.layer)
         ]
-        + [
-            model.vit.encoder.layer[-1].register_forward_hook(
-                get_hook(len(model.vit.encoder.layer) + 1)
-            )
-        ]
+        + [model.vit.encoder.layer[-1].register_forward_hook(get_hook(-1, post=True))]
     )
 
     try:
-        outputs = model(inputs_dict).logits
+        outputs = model(x).logits
     finally:
         for handle in handles:
             handle.remove()
 
+    # noinspection PyTypeChecker
     return outputs, tuple(hidden_states_)
