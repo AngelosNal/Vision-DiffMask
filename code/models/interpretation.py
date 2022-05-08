@@ -109,9 +109,7 @@ class ImageInterpretationNet(pl.LightningModule):
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
 
-    def training_step(
-        self, batch: Tuple[Tensor, Tensor], _: Tensor, __: Tensor
-    ) -> dict:
+    def training_step(self, batch: Tuple[Tensor, Tensor], *args, **kwargs) -> dict:
         x, y = batch
 
         (
