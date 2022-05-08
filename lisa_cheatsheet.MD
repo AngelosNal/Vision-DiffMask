@@ -13,10 +13,24 @@ module load Anaconda3/2021.05
 > User should change to lcur____@"random_string"
 
 - Install the environment:
-```conda env create -f environment.yml```
+```
+cd Patch-DiffMask
+conda env create -f environment.yml
+```
+
+- Exit the node and reenter to restart the shell (conda shenanigans)
+```
+exit
+srun -p gpu_shared_course -n 1 --mem=32000M --ntasks-per-node 1 --gpus 1 --cpus-per-task 2 -t 1:00:00 --pty /bin/bash
+conda activate dl2
+```
+
 
 - Activate the environment:
 ```conda activate dl2```
 
 - Run the code:
 ```python main.py```
+
+- If you wanna set up a train job:
+TODO
