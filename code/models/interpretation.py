@@ -1,11 +1,11 @@
 import pytorch_lightning as pl
-from models.gates import *
-from vitutils import *
-from lookahead import *
-from transformers import (
-    get_constant_schedule_with_warmup,
-    get_constant_schedule,
-)
+import torch
+
+from .gates import DiffMaskGateInput
+from utils.setters import vit_setter
+from utils.metrics import accuracy_precision_recall_f1
+from optimizer import LookaheadRMSprop
+from transformers import get_constant_schedule_with_warmup, get_constant_schedule
 
 
 class ImageInterpretationNet(pl.LightningModule):
