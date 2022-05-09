@@ -72,9 +72,7 @@ class ImageInterpretationNet(pl.LightningModule):
         cls_tokens = self.model.vit.embeddings.cls_token.expand(batch_size, -1, -1)
         hidden_states[0] = torch.cat((cls_tokens, patch_embeddings), dim=1)
 
-        # TODO: deal with these
-        # layer_pred = torch.randint(len(hidden_states), ()).item()
-        layer_pred = 4
+        layer_pred = torch.randint(len(hidden_states), ()).item()
         layer_drop = 0
 
         (
