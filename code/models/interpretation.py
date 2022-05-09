@@ -13,7 +13,7 @@ from transformers import (
     ViTForImageClassification,
 )
 from typing import Callable, List, Optional, Tuple, Union
-from utils.setters import vit_setter
+from utils.getters_setters import vit_getter, vit_setter
 from utils.metrics import accuracy_precision_recall_f1
 
 
@@ -63,8 +63,14 @@ class ImageInterpretationNet(pl.LightningModule):
     def forward_explainer(
         self, x: Tensor, attribution: bool = False
     ) -> Union[Tensor, Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, int]]:
-        outputs = self.model(x, output_hidden_states=True)
-        logits_orig, hidden_states = outputs.logits, outputs.hidden_states
+        logits_orig, hidden_states = vit_getter(self.model, x)
+
+        # Add [CLS] token to deal with shape mismatch in self.gate() call
+        patch_embeddings = hidden_states[0]
+        batch_size = len(patch_embeddings)
+
+        cls_tokens = self.model.vit.embeddings.cls_token.expand(batch_size, -1, -1)
+        hidden_states[0] = torch.cat((cls_tokens, patch_embeddings), dim=1)
 
         # TODO: deal with these
         # layer_pred = torch.randint(len(hidden_states), ()).item()
