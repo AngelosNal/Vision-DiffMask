@@ -9,6 +9,9 @@ from pytorch_lightning.loggers import WandbLogger
 
 
 def main(args: argparse.Namespace):
+    # Seed
+    pl.seed_everything(123)
+
     # Load pre-trained Transformer
     model = ViTForImageClassification.from_pretrained(args.vit_model)
 
