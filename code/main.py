@@ -4,8 +4,8 @@ import pytorch_lightning as pl
 from datamodules import CIFAR10DataModule
 from models.interpretation import ImageInterpretationNet
 from transformers import ViTFeatureExtractor, ViTForImageClassification
-from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 
 
 def main(args: argparse.Namespace):
@@ -23,13 +23,17 @@ def main(args: argparse.Namespace):
     # Create Vision DiffMask for the model
     diffmask = ImageInterpretationNet(model)
 
+    # Create logger
+    wandb_logger = WandbLogger(
+        name='ViT-CIFAR10',
+        project='Patch-DiffMask'
+    )
+
     # Train
     trainer = pl.Trainer(
         accelerator="auto",
         callbacks=[ModelCheckpoint()],
-        logger=TensorBoardLogger(
-            "lightning_logs", name=args.vit_model, default_hp_metric=False
-        ),
+        logger=wandb_logger,
         max_epochs=args.num_epochs,
     )
 

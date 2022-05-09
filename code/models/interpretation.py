@@ -161,6 +161,12 @@ class ImageInterpretationNet(pl.LightningModule):
             "progress_bar": outputs_dict,
         }
 
+        self.log('loss', outputs_dict['loss'], on_step=True, on_epoch=True, prog_bar=True)
+        self.log('loss_c', outputs_dict['loss_c'], on_step=True, on_epoch=True, prog_bar=True)
+        self.log('loss_g', outputs_dict['loss_g'], on_step=True, on_epoch=True, prog_bar=True)
+        self.log('acc', outputs_dict['acc'], on_step=True, on_epoch=True, prog_bar=True)
+        self.log('l0', outputs_dict['l0'], on_step=True, on_epoch=True, prog_bar=True)
+
         outputs_dict = {
             "{}{}".format("" if self.training else "val_", k): v
             for k, v in outputs_dict.items()
