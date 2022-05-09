@@ -170,6 +170,7 @@ class ImageInterpretationNet(pl.LightningModule):
         self.log('loss_g', outputs_dict['loss_g'], on_step=True, on_epoch=True, prog_bar=True)
         self.log('acc', outputs_dict['acc'], on_step=True, on_epoch=True, prog_bar=True)
         self.log('l0', outputs_dict['l0'], on_step=True, on_epoch=True, prog_bar=True)
+        self.log('alpha', outputs_dict['alpha'], on_step=True, on_epoch=True, prog_bar=True)
 
         outputs_dict = {
             "{}{}".format("" if self.training else "val_", k): v
