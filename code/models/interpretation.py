@@ -40,7 +40,7 @@ class ImageInterpretationNet(pl.LightningModule):
             hidden_size=model.config.hidden_size,
             hidden_attention=model.config.hidden_size // 4,
             max_position_embeddings=1,
-            num_hidden_layers=model.config.num_hidden_layers,
+            num_hidden_layers=model.config.num_hidden_layers + 2,
         )
 
         self.alpha = torch.nn.ParameterList(
