@@ -33,7 +33,7 @@ class ImageClassificationNet(pl.LightningModule):
         return self.model(x).logits
 
     def configure_optimizers(self) -> Tuple[List[Optimizer], List[_LRScheduler]]:
-        optimizer = AdamW(self.parameters(), lr=self.lr)
+        optimizer = AdamW(self.parameters(), lr=self.hparams.lr)
         lr_scheduler = MultiStepLR(optimizer, milestones=[100, 150], gamma=0.1)
 
         return [optimizer], [lr_scheduler]
