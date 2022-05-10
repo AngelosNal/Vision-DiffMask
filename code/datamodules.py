@@ -35,7 +35,13 @@ class UnNest:
     """Un-nest the output after the ViTFeatureExtractor"""
 
     def __call__(self, x: BatchFeature) -> Tensor:
-        return x["pixel_values"][0]
+        x = torch.tensor(x["pixel_values"][0])
+
+        if len(x) == 3:
+            return x
+
+        # ViT expects 3D tensors [C, H, W]
+        return x.unsqueeze(0)
 
 
 class ImageDataModule(pl.LightningDataModule, metaclass=ABCMeta):
@@ -101,12 +107,16 @@ class ImageDataModule(pl.LightningDataModule, metaclass=ABCMeta):
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.val_data, batch_size=self.batch_size, num_workers=self.num_workers,
+            self.val_data,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
         )
 
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.test_data, batch_size=self.batch_size, num_workers=self.num_workers,
+            self.test_data,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
         )
 
 
@@ -136,8 +146,6 @@ class MNISTDataModule(ImageDataModule):
         super().__init__(
             data_dir, batch_size, feature_extractor, noise, rotation, blur, num_workers
         )
-
-        # TODO: We need to find a ViTFeatureExtractor (or create one) for MNIST
 
     def prepare_data(self):
         # Download MNIST
