@@ -24,18 +24,34 @@ def main(args: argparse.Namespace):
         ),
     )
 
+    # Setup datamodule to sample images for the mask callback
+    dm.prepare_data()
+    dm.setup('fit')
+
     # Create Vision DiffMask for the model
     diffmask = ImageInterpretationNet(model.config)
     diffmask.set_vision_transformer(model)
 
-    # Create logger & sample images for logging
-    wandb_logger = WandbLogger(name="ViT-CIFAR10", project="Patch-DiffMask")
+    # Create wandb logger instance
+    wandb_logger = WandbLogger(
+        name="ViT-CIFAR10",  # TODO: add experiment-related information
+        project="Patch-DiffMask",
+    )
+
+    # Create checkpoint callback
+    ckpt_cb = ModelCheckpoint(
+        # TODO: add more args (probably monitor some metric)
+        dirpath=f"checkpoints/{wandb_logger.version}"
+    )
+
+    # Sample images & create mask callback
     sample_images, _ = next(iter(dm.val_dataloader()))
+    mask_cb = DrawMaskCallback(sample_images)
 
     # Train
     trainer = pl.Trainer(
         accelerator="auto",
-        callbacks=[ModelCheckpoint(), DrawMaskCallback(sample_images)],
+        callbacks=[ckpt_cb, mask_cb],
         logger=wandb_logger,
         max_epochs=args.num_epochs,
     )
