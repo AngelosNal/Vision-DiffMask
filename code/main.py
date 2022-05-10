@@ -6,6 +6,7 @@ from models.interpretation import ImageInterpretationNet
 from transformers import ViTFeatureExtractor, ViTForImageClassification
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
+from utils.plot import DrawMaskCallback
 
 
 def main(args: argparse.Namespace):
@@ -27,15 +28,12 @@ def main(args: argparse.Namespace):
     diffmask = ImageInterpretationNet(model)
 
     # Create logger
-    wandb_logger = WandbLogger(
-        name='ViT-CIFAR10',
-        project='Patch-DiffMask'
-    )
+    wandb_logger = WandbLogger(name="ViT-CIFAR10", project="Patch-DiffMask")
 
     # Train
     trainer = pl.Trainer(
         accelerator="auto",
-        callbacks=[ModelCheckpoint()],
+        callbacks=[ModelCheckpoint(), DrawMaskCallback(sample_images=dm.val_data[:8])],
         logger=wandb_logger,
         max_epochs=args.num_epochs,
     )
@@ -54,7 +52,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--num_epochs", type=int, default=5, help="Number of epochs to train.",
+        "--num_epochs",
+        type=int,
+        default=5,
+        help="Number of epochs to train.",
     )
 
     args = parser.parse_args()
