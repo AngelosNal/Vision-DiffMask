@@ -60,8 +60,8 @@ def draw_heatmap_on_image(
         The default image with the cam overlay.
     """
     # Convert image & mask to numpy
-    image = image.permute(1, 2, 0).numpy()
-    mask = mask.numpy()
+    image = image.permute(1, 2, 0).cpu().numpy()
+    mask = mask.cpu().numpy()
 
     # Create heatmap
     heatmap = cv2.applyColorMap(np.uint8(255 * mask), colormap)
@@ -76,9 +76,9 @@ def draw_heatmap_on_image(
 
 
 class DrawMaskCallback(Callback):
-    def __init__(self, sample_images: Tensor, log_every_n_stes: int = 200):
+    def __init__(self, sample_images: Tensor, log_every_n_steps: int = 200):
         self.sample_images = unnormalize(sample_images)
-        self.log_every_n_stes = log_every_n_stes
+        self.log_every_n_steps = log_every_n_steps
 
     def _log_masks(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # Predict mask
@@ -99,17 +99,22 @@ class DrawMaskCallback(Callback):
             for image, mask in zip(sample_images, masks)
         ]
 
-        # Compute masking percentage
-        masked_pixels_percentage = 100 * (1 - masks.mean().item())
+        # Compute masking percentages
+        masking_percentages = [100 * (1 - mask.mean().item()) for mask in masks]
+        captions = [""] * (2 * len(sample_images)) + [
+            f"Masked pixels: {pct:.2f}%" for pct in masking_percentages
+        ]
 
-        # Log with tensorboard
+        # Log with wandb
         trainer.logger.log_image(
-            key=f"Percentaged of masked pixels: {masked_pixels_percentage}",
+            key="Masked Images",
             images=sample_images + sample_images_with_mask + sample_images_with_heatmap,
+            caption=captions,
         )
 
     def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        self._log_masks(trainer, pl_module)
+        # Transfer sample images to correct device
+        self.sample_images = self.sample_images.to(pl_module.device)
 
     def on_train_batch_end(
         self,
@@ -120,5 +125,5 @@ class DrawMaskCallback(Callback):
         batch_idx: int,
         unused: int = 0,
     ) -> None:
-        if batch_idx % self.log_every_n_stes == 0:
+        if batch_idx % self.log_every_n_steps == 0:
             self._log_masks(trainer, pl_module)
