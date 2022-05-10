@@ -27,13 +27,14 @@ def main(args: argparse.Namespace):
     # Create Vision DiffMask for the model
     diffmask = ImageInterpretationNet(model)
 
-    # Create logger
+    # Create logger & sample images for logging
     wandb_logger = WandbLogger(name="ViT-CIFAR10", project="Patch-DiffMask")
+    sample_images, _ = next(iter(dm.val_dataloader()))
 
     # Train
     trainer = pl.Trainer(
         accelerator="auto",
-        callbacks=[ModelCheckpoint(), DrawMaskCallback(sample_images=dm.val_data[:8])],
+        callbacks=[ModelCheckpoint(), DrawMaskCallback(sample_images)],
         logger=wandb_logger,
         max_epochs=args.num_epochs,
     )
