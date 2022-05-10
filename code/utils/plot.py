@@ -23,10 +23,12 @@ def unnormalize(
     Returns:
         Tensor: the batch of images unnormalized.
     """
-    for i, (m, s) in enumerate(zip(mean, std)):
-        images[:, i, :, :].mul_(s).add_(m)
+    unnormalized_images = images.clone()
 
-    return images
+    for i, (m, s) in enumerate(zip(mean, std)):
+        unnormalized_images[:, i, :, :].mul_(s).add_(m)
+
+    return unnormalized_images
 
 
 def draw_mask_on_image(image: Tensor, mask: Tensor) -> Tensor:
@@ -74,10 +76,11 @@ def draw_heatmap_on_image(
 
 
 class DrawMaskCallback(Callback):
-    def __init__(self, sample_images: Tensor):
+    def __init__(self, sample_images: Tensor, log_every_n_stes: int = 200):
         self.sample_images = unnormalize(sample_images)
+        self.log_every_n_stes = log_every_n_stes
 
-    def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+    def _log_masks(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # Predict mask
         with torch.no_grad():
             pl_module.eval()
@@ -96,8 +99,26 @@ class DrawMaskCallback(Callback):
             for image, mask in zip(sample_images, masks)
         ]
 
+        # Compute masking percentage
+        masked_pixels_percentage = 100 * (1 - masks.mean().item())
+
         # Log with tensorboard
         trainer.logger.log_image(
-            key="Predicted masks for sample images",
+            key=f"Percentaged of masked pixels: {masked_pixels_percentage}",
             images=sample_images + sample_images_with_mask + sample_images_with_heatmap,
         )
+
+    def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        self._log_masks(trainer, pl_module)
+
+    def on_train_batch_end(
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        outputs: dict,
+        batch: tuple[Tensor, Tensor],
+        batch_idx: int,
+        unused: int = 0,
+    ) -> None:
+        if batch_idx % self.log_every_n_stes == 0:
+            self._log_masks(trainer, pl_module)
