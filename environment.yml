@@ -15,3 +15,5 @@ dependencies:
   - transformers=4.16.2 
   # misc
   - jupyter=1.0.0
+  - pip:
+    - opencv-python==4.5.5.64
