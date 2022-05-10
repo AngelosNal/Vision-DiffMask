@@ -1,7 +1,9 @@
 import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 
 from .gates import DiffMaskGateInput
+from math import sqrt
 from optimizer import LookaheadRMSprop
 from pytorch_lightning.core.optimizer import LightningOptimizer
 from torch import Tensor
@@ -239,6 +241,30 @@ class ImageInterpretationNet(pl.LightningModule):
             get_constant_schedule(optimizers[1]),
         ]
         return optimizers, schedulers
+    
+    def get_mask(self, x: Tensor) -> Tensor:
+        # Forward input through freezed ViT & collect hidden states
+        hidden_states = self.model(x, output_hidden_states=True).hidden_states
+
+        # Forward hidden states through DiffMask TODO: change 11 to None
+        log_expected_L0 = self.gate(hidden_states=hidden_states, layer_pred=11)[-1]
+        
+        # Calculate mask
+        mask = log_expected_L0.sum(-1).exp()
+        mask = mask[:, 1:]
+        
+        # Reshape mask to match input shape
+        B, C, H, W = x.shape    # batch, channels, height, width
+        B, P = mask.shape       # batch, patches
+        
+        N = int(sqrt(P))    # patches per side
+        S = int(H / N)      # patch size
+        
+        mask = mask.reshape(B, 1, N, N)
+        mask = F.interpolate(mask, scale_factor=S)
+        mask = mask.reshape(B, H, W)
+
+        return mask
 
     def optimizer_step(
         self,
