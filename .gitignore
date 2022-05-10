@@ -343,8 +343,13 @@ cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,python,jupyternotebooks,visualstudiocode,pycharm
 
-# Ignore lightning logs
+# Ignore logs
 lightning_logs/
+wandb/
 
 # Ignore data directory
 data/
+
+# Ignore tmp files
+Untitled*
+tmp*
