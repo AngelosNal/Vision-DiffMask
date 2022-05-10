@@ -25,7 +25,8 @@ def main(args: argparse.Namespace):
     )
 
     # Create Vision DiffMask for the model
-    diffmask = ImageInterpretationNet(model)
+    diffmask = ImageInterpretationNet(model.config)
+    diffmask.set_vision_transformer(model)
 
     # Create logger & sample images for logging
     wandb_logger = WandbLogger(name="ViT-CIFAR10", project="Patch-DiffMask")

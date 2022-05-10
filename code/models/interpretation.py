@@ -14,6 +14,7 @@ from transformers import (
     get_constant_schedule,
     ViTForImageClassification,
 )
+from transformers.models.vit.configuration_vit import ViTConfig
 from typing import Callable, List, Optional, Tuple, Union
 from utils.getters_setters import vit_getter, vit_setter
 from utils.metrics import accuracy_precision_recall_f1
@@ -22,7 +23,7 @@ from utils.metrics import accuracy_precision_recall_f1
 class ImageInterpretationNet(pl.LightningModule):
     def __init__(
         self,
-        model: ViTForImageClassification,
+        model_cfg: ViTConfig,
         lr: float = 3e-4,
         eps: float = 0.1,
         eps_valid: float = 0.8,
@@ -32,35 +33,36 @@ class ImageInterpretationNet(pl.LightningModule):
     ):
         super().__init__()
 
-        self.save_hyperparameters(ignore=["model"])
-
-        self.model = model
-        for param in self.model.parameters():
-            param.requires_grad = False
+        self.save_hyperparameters()
 
         self.gate = DiffMaskGateInput(
-            hidden_size=model.config.hidden_size,
-            hidden_attention=model.config.hidden_size // 4,
+            hidden_size=model_cfg.hidden_size,
+            hidden_attention=model_cfg.hidden_size // 4,
+            num_hidden_layers=model_cfg.num_hidden_layers + 2,
             max_position_embeddings=1,
-            num_hidden_layers=model.config.num_hidden_layers + 2,
         )
 
         self.alpha = torch.nn.ParameterList(
             [
                 torch.nn.Parameter(torch.ones(()))
-                for _ in range(self.model.config.num_hidden_layers + 2)
+                for _ in range(model_cfg.num_hidden_layers + 2)
             ]
         )
 
         self.register_buffer(
-            "running_acc", torch.ones((self.model.config.num_hidden_layers + 2,))
+            "running_acc", torch.ones((model_cfg.num_hidden_layers + 2,))
         )
         self.register_buffer(
-            "running_l0", torch.ones((self.model.config.num_hidden_layers + 2,))
+            "running_l0", torch.ones((model_cfg.num_hidden_layers + 2,))
         )
         self.register_buffer(
-            "running_steps", torch.zeros((self.model.config.num_hidden_layers + 2,))
+            "running_steps", torch.zeros((model_cfg.num_hidden_layers + 2,))
         )
+
+    def set_vision_transformer(self, model: ViTForImageClassification):
+        self.model = model
+        for param in self.model.parameters():
+            param.requires_grad = False
 
     def forward_explainer(
         self, x: Tensor, attribution: bool = False
@@ -167,12 +169,20 @@ class ImageInterpretationNet(pl.LightningModule):
             "progress_bar": outputs_dict,
         }
 
-        self.log('loss', outputs_dict['loss'], on_step=True, on_epoch=True, prog_bar=True)
-        self.log('loss_c', outputs_dict['loss_c'], on_step=True, on_epoch=True, prog_bar=True)
-        self.log('loss_g', outputs_dict['loss_g'], on_step=True, on_epoch=True, prog_bar=True)
-        self.log('acc', outputs_dict['acc'], on_step=True, on_epoch=True, prog_bar=True)
-        self.log('l0', outputs_dict['l0'], on_step=True, on_epoch=True, prog_bar=True)
-        self.log('alpha', outputs_dict['alpha'], on_step=True, on_epoch=True, prog_bar=True)
+        self.log(
+            "loss", outputs_dict["loss"], on_step=True, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "loss_c", outputs_dict["loss_c"], on_step=True, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "loss_g", outputs_dict["loss_g"], on_step=True, on_epoch=True, prog_bar=True
+        )
+        self.log("acc", outputs_dict["acc"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log("l0", outputs_dict["l0"], on_step=True, on_epoch=True, prog_bar=True)
+        self.log(
+            "alpha", outputs_dict["alpha"], on_step=True, on_epoch=True, prog_bar=True
+        )
 
         outputs_dict = {
             "{}{}".format("" if self.training else "val_", k): v
@@ -306,3 +316,10 @@ class ImageInterpretationNet(pl.LightningModule):
                     torch.full_like(self.alpha[i].data, 200),
                     self.alpha[i].data,
                 )
+
+    def on_save_checkpoint(self, ckpt: dict):
+        # Remove VIT from checkpoint as we can load it dynamically
+        keys = list(ckpt["state_dict"].keys())
+        for key in keys:
+            if key.startswith("model."):
+                del ckpt["state_dict"][key]
