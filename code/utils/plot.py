@@ -59,6 +59,9 @@ def draw_heatmap_on_image(
     Returns:
         The default image with the cam overlay.
     """
+    # Save the device of the image
+    original_device = image.device
+
     # Convert image & mask to numpy
     image = image.permute(1, 2, 0).cpu().numpy()
     mask = mask.cpu().numpy()
@@ -72,7 +75,7 @@ def draw_heatmap_on_image(
     masked_image = image + heatmap
     masked_image = masked_image / np.max(masked_image)
 
-    return torch.tensor(masked_image).permute(2, 0, 1)
+    return torch.tensor(masked_image).permute(2, 0, 1).to(original_device)
 
 
 class DrawMaskCallback(Callback):
@@ -111,8 +114,9 @@ class DrawMaskCallback(Callback):
 
         # Log with wandb
         trainer.logger.log_image(
-            key=f"Percentaged of masked pixels: {masked_pixels_percentage}",
+            key="Masked images",
             images=[samples],
+            caption=[f"Percentage of masked pixels: {masked_pixels_percentage}"],
         )
 
     def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
