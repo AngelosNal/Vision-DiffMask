@@ -49,7 +49,7 @@ class ImageInterpretationNet(pl.LightningModule):
 
         self.alpha = torch.nn.ParameterList(
             [
-                torch.nn.Parameter(torch.ones(())) * alpha
+                torch.nn.Parameter(torch.ones(()) * alpha)
                 for _ in range(model_cfg.num_hidden_layers + 2)
             ]
         )
