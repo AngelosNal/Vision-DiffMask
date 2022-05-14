@@ -18,3 +18,4 @@ dependencies:
   - jupyter=1.0.0
   - pip:
     - opencv-python==4.5.5.64
+    - wandb==0.12.16
