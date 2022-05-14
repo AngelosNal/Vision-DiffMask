@@ -43,8 +43,8 @@ class ImageInterpretationNet(pl.LightningModule):
             hidden_attention=model_cfg.hidden_size // 4,
             num_hidden_layers=model_cfg.num_hidden_layers + 2,
             max_position_embeddings=1,
-            mul_activation = mul_activation,
-            add_activation = add_activation,
+            mul_activation=mul_activation,
+            add_activation=add_activation,
         )
 
         self.alpha = torch.nn.ParameterList(
@@ -256,25 +256,25 @@ class ImageInterpretationNet(pl.LightningModule):
             get_constant_schedule(optimizers[1]),
         ]
         return optimizers, schedulers
-    
+
     def get_mask(self, x: Tensor) -> Tensor:
         # Forward input through freezed ViT & collect hidden states
         hidden_states = self.model(x, output_hidden_states=True).hidden_states
 
         # Forward hidden states through DiffMask TODO: change 11 to None
         log_expected_L0 = self.gate(hidden_states=hidden_states, layer_pred=11)[-1]
-        
+
         # Calculate mask
         mask = log_expected_L0.sum(-1).exp()
         mask = mask[:, 1:]
-        
+
         # Reshape mask to match input shape
-        B, C, H, W = x.shape    # batch, channels, height, width
-        B, P = mask.shape       # batch, patches
-        
-        N = int(sqrt(P))    # patches per side
-        S = int(H / N)      # patch size
-        
+        B, C, H, W = x.shape  # batch, channels, height, width
+        B, P = mask.shape  # batch, patches
+
+        N = int(sqrt(P))  # patches per side
+        S = int(H / N)  # patch size
+
         mask = mask.reshape(B, 1, N, N)
         mask = F.interpolate(mask, scale_factor=S)
         mask = mask.reshape(B, H, W)

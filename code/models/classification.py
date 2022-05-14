@@ -39,7 +39,9 @@ class ImageClassificationNet(pl.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def _calculate_loss(
-        self, batch: Tuple[Tensor, Tensor], mode: str = "train",
+        self,
+        batch: Tuple[Tensor, Tensor],
+        mode: str = "train",
     ) -> Tensor:
         imgs, labels = batch
 

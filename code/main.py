@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
     # Interpretation model
     parser.add_argument(
-        'alpha',
+        "alpha",
         type=float,
         default=1.0,
         help="Intial value for the Lagrangian",

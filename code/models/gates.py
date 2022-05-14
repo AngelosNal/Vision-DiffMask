@@ -97,7 +97,13 @@ class DiffMaskGateInput(nn.Module):
 
         self.g_hat = nn.ModuleList(
             [
-                gate_fn(hidden_size * 2, hidden_attention, mul_activation, add_activation, gate_bias)
+                gate_fn(
+                    hidden_size * 2,
+                    hidden_attention,
+                    mul_activation,
+                    add_activation,
+                    gate_bias,
+                )
                 for _ in range(num_hidden_layers)
             ]
         )
@@ -114,7 +120,8 @@ class DiffMaskGateInput(nn.Module):
             )
         else:
             self.register_buffer(
-                "placeholder", torch.zeros((1, 1, hidden_size)),
+                "placeholder",
+                torch.zeros((1, 1, hidden_size)),
             )
 
     def forward(
@@ -131,7 +138,9 @@ class DiffMaskGateInput(nn.Module):
         )
 
         dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits), l=-0.2, r=1.0,
+            BinaryConcrete(torch.full_like(logits, 0.2), logits),
+            l=-0.2,
+            r=1.0,
         )
 
         gates_full = dist.rsample().cumprod(-1)
@@ -189,7 +198,8 @@ class DiffMaskGateHidden(nn.Module):
             )
         else:
             self.register_buffer(
-                "placeholder", torch.zeros((num_hidden_layers, 1, 1, hidden_size)),
+                "placeholder",
+                torch.zeros((num_hidden_layers, 1, 1, hidden_size)),
             )
 
     def forward(
@@ -203,7 +213,9 @@ class DiffMaskGateHidden(nn.Module):
             )
 
         dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits), l=-0.2, r=1.0,
+            BinaryConcrete(torch.full_like(logits, 0.2), logits),
+            l=-0.2,
+            r=1.0,
         )
 
         gates_full = dist.rsample()
