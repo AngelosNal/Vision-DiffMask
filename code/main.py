@@ -62,19 +62,22 @@ def main(args: argparse.Namespace):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "--vit_model",
-        type=str,
-        default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
-        help="Pre-trained Vision Transformer (ViT) model to load.",
-    )
+    # Model
+    parser.add_argument("--vit_model", type=str, default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
+                        help="Pre-trained Vision Transformer (ViT) model to load.",)
 
-    parser.add_argument(
-        "--num_epochs",
-        type=int,
-        default=5,
-        help="Number of epochs to train.",
-    )
+    parser.add_argument("--num_epochs", type=int, default=5, help="Number of epochs to train.",)
+    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate.",)
+    parser.add_argument("--eps", type=float, default=0.1, help="Epsilon for the Adam optimizer.",)
+    parser.add_argument("--lr_placeholder", type=float, default=1e-3, help="Epsilon for the Adam optimizer.",)
+    parser.add_argument("--lr_alpha", type=float, default=0.3, help="Epsilon for the Adam optimizer.",)
+
+    # Datamodule args
+    parser.add_argument("--batch_size", type=int, default=64, help="The batch size to use.",)
+    parser.add_argument("--dataset", type=float, default='CIFAR10', help="The dataset to use.", )
+    parser.add_argument("--data_dir", type=str, default='data/', help="The data directory to use.", )
+    parser.add_argument("--num_workers", type=int, default=4, help="The number of workers to use.", )
+
 
     args = parser.parse_args()
 
