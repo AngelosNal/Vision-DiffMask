@@ -95,6 +95,7 @@ def main(args: argparse.Namespace):
     trainer = pl.Trainer(
         accelerator="auto",
         callbacks=[ckpt_cb, mask_cb],
+        enable_progress_bar=args.enable_progress_bar,
         logger=wandb_logger,
         max_epochs=args.num_epochs,
     )
