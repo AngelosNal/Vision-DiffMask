@@ -9,6 +9,32 @@ from pytorch_lightning.loggers import WandbLogger
 from utils.plot import DrawMaskCallback
 
 
+def get_experiment_name(args: argparse.Namespace):
+    # Convert to dictionary
+    args = vars(args)
+
+    # Create a list with non-experiment arguments
+    non_experiment_args = [
+        "add_blur",
+        "add_noise",
+        "add_rotation",
+        "batch_size",
+        "data_dir",
+        "num_epochs",
+        "num_workers",
+        "vit_model",
+    ]
+
+    # Create experiment name from experiment arguments
+    return "-".join(
+        [
+            f"{name}={value}"
+            for name, value in sorted(args.items())
+            if name not in non_experiment_args
+        ]
+    )
+
+
 def main(args: argparse.Namespace):
     # Seed
     pl.seed_everything(123)
@@ -46,7 +72,7 @@ def main(args: argparse.Namespace):
 
     # Create wandb logger instance
     wandb_logger = WandbLogger(
-        name="ViT-CIFAR10",  # TODO: add experiment-related information
+        name=get_experiment_name(args),
         project="Patch-DiffMask",
     )
 
@@ -73,7 +99,7 @@ def main(args: argparse.Namespace):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    
+
     # Trainer
     parser.add_argument(
         "--num_epochs",
@@ -81,7 +107,7 @@ if __name__ == "__main__":
         default=5,
         help="Number of epochs to train.",
     )
-    
+
     # Classification model
     parser.add_argument(
         "--vit_model",
@@ -89,7 +115,7 @@ if __name__ == "__main__":
         default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
         help="Pre-trained Vision Transformer (ViT) model to load.",
     )
-    
+
     # Interpretation model
     parser.add_argument(
         "--lr",
@@ -137,7 +163,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--dataset",
-        type=float,
+        type=str,
         default="CIFAR10",
         help="The dataset to use.",
     )
