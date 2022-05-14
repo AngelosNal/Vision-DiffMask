@@ -98,23 +98,29 @@ class DrawMaskCallback(Callback):
             draw_heatmap_on_image(image, mask)
             for image, mask in zip(sample_images, masks)
         ]
+        
+        # Merge sample images into one image
+        samples = torch.cat([
+            torch.cat(sample_images, dim=2),
+            torch.cat(sample_images_with_mask, dim=2),
+            torch.cat(sample_images_with_heatmap, dim=2),
+        ], dim=1)
 
-        # Compute masking percentages
-        masking_percentages = [100 * (1 - mask.mean().item()) for mask in masks]
-        captions = [""] * (2 * len(sample_images)) + [
-            f"Masked pixels: {pct:.2f}%" for pct in masking_percentages
-        ]
+        # Compute masking percentage
+        masked_pixels_percentage = 100 * (1 - masks.mean().item())
 
         # Log with wandb
         trainer.logger.log_image(
-            key="Masked Images",
-            images=sample_images + sample_images_with_mask + sample_images_with_heatmap,
-            caption=captions,
+            key=f"Percentaged of masked pixels: {masked_pixels_percentage}",
+            images=[samples],
         )
 
     def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # Transfer sample images to correct device
         self.sample_images = self.sample_images.to(pl_module.device)
+        
+        # Log sample images
+        self._log_masks(trainer, pl_module)
 
     def on_train_batch_end(
         self,
@@ -125,5 +131,6 @@ class DrawMaskCallback(Callback):
         batch_idx: int,
         unused: int = 0,
     ) -> None:
+        # Log sample images every n steps
         if batch_idx % self.log_every_n_steps == 0:
             self._log_masks(trainer, pl_module)

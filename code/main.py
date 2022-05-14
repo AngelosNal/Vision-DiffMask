@@ -1,5 +1,6 @@
 import argparse
 import pytorch_lightning as pl
+import torch
 
 from datamodules import CIFAR10DataModule
 from models.interpretation import ImageInterpretationNet
@@ -23,6 +24,7 @@ def get_experiment_name(args: argparse.Namespace):
         "enable_progress_bar"
         "num_epochs",
         "num_workers",
+        "sample_images",
         "seed",
         "vit_model",
     ]
@@ -86,7 +88,7 @@ def main(args: argparse.Namespace):
     )
 
     # Sample images & create mask callback
-    sample_images, _ = next(iter(dm.val_dataloader()))
+    sample_images = torch.stack([dm.val_data[i][0] for i in range(8)])
     mask_cb = DrawMaskCallback(sample_images)
 
     # Train
@@ -120,6 +122,14 @@ if __name__ == "__main__":
         type=int,
         default=123,
         help="Random seed for reproducibility.",
+    )
+    
+    # Logging
+    parser.add_argument(
+        "--sample_images",
+        type=int,
+        default=8,
+        help="Number of images to sample for the mask callback.",
     )
 
     # Classification model
