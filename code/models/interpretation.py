@@ -30,6 +30,8 @@ class ImageInterpretationNet(pl.LightningModule):
         acc_valid: float = 0.75,
         lr_placeholder: float = 1e-3,
         lr_alpha: float = 0.3,
+        mul_activation: float = 10.0,
+        add_activation: float = 5.0,
     ):
         super().__init__()
 
@@ -40,6 +42,8 @@ class ImageInterpretationNet(pl.LightningModule):
             hidden_attention=model_cfg.hidden_size // 4,
             num_hidden_layers=model_cfg.num_hidden_layers + 2,
             max_position_embeddings=1,
+            mul_activation = mul_activation,
+            add_activation = add_activation,
         )
 
         self.alpha = torch.nn.ParameterList(

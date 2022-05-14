@@ -46,7 +46,8 @@ class MLPMaxGate(nn.Module):
         self,
         input_size: int,
         hidden_size: int,
-        max_activation: int = 10,
+        mul_activation: float = 10.0,
+        add_activation: float = 5.0,
         bias: bool = True,
     ):
         """
@@ -71,11 +72,11 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
             nn.Tanh(),
         )
-        self.bias = nn.Parameter(torch.tensor(5.0))
-        self.max_activation = max_activation
+        self.add_activation = nn.Parameter(torch.tensor(add_activation))
+        self.mul_activation = mul_activation
 
     def forward(self, *args: Tensor) -> Tensor:
-        return self.f(torch.cat(args, -1)) * self.max_activation + self.bias
+        return self.f(torch.cat(args, -1)) * self.mul_activation + self.add_activation
 
 
 class DiffMaskGateInput(nn.Module):
@@ -86,6 +87,8 @@ class DiffMaskGateInput(nn.Module):
         num_hidden_layers: int,
         max_position_embeddings: int,
         gate_fn: nn.Module = MLPMaxGate,
+        mul_activation: float = 10.0,
+        add_activation: float = 5.0,
         gate_bias: bool = True,
         placeholder: bool = False,
         init_vector: Tensor = None,
@@ -94,7 +97,7 @@ class DiffMaskGateInput(nn.Module):
 
         self.g_hat = nn.ModuleList(
             [
-                gate_fn(hidden_size * 2, hidden_attention, bias=gate_bias)
+                gate_fn(hidden_size * 2, hidden_attention, mul_activation, add_activation, gate_bias)
                 for _ in range(num_hidden_layers)
             ]
         )
