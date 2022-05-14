@@ -37,7 +37,7 @@ def get_experiment_name(args: argparse.Namespace):
 
 def main(args: argparse.Namespace):
     # Seed
-    pl.seed_everything(123)
+    pl.seed_everything(args.seed)
 
     # Load pre-trained Transformer
     model = ViTForImageClassification.from_pretrained(args.vit_model)
@@ -61,6 +61,7 @@ def main(args: argparse.Namespace):
     # Create Vision DiffMask for the model
     diffmask = ImageInterpretationNet(
         model_cfg=model.config,
+        alpha=args.alpha,
         lr=args.lr,
         eps=args.eps,
         lr_placeholder=args.lr_placeholder,
@@ -107,6 +108,12 @@ if __name__ == "__main__":
         default=5,
         help="Number of epochs to train.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=123,
+        help="Random seed for reproducibility.",
+    )
 
     # Classification model
     parser.add_argument(
@@ -117,6 +124,12 @@ if __name__ == "__main__":
     )
 
     # Interpretation model
+    parser.add_argument(
+        'alpha',
+        type=float,
+        default=1.0,
+        help="Intial value for the Lagrangian",
+    )
     parser.add_argument(
         "--lr",
         type=float,
