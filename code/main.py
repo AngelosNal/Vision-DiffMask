@@ -20,8 +20,10 @@ def get_experiment_name(args: argparse.Namespace):
         "add_rotation",
         "batch_size",
         "data_dir",
+        "enable_progress_bar"
         "num_epochs",
         "num_workers",
+        "seed",
         "vit_model",
     ]
 
@@ -48,9 +50,9 @@ def main(args: argparse.Namespace):
         feature_extractor=ViTFeatureExtractor.from_pretrained(
             args.vit_model, return_tensors="pt"
         ),
-        noise=args.noise,
-        rotation=args.rotation,
-        blur=args.blur,
+        noise=args.add_noise,
+        rotation=args.add_rotation,
+        blur=args.add_blur,
         num_workers=args.num_workers,
     )
 
@@ -103,6 +105,11 @@ if __name__ == "__main__":
 
     # Trainer
     parser.add_argument(
+        "--enable_progress_bar",
+        action="store_true",
+        help="Whether to enable the progress bar (NOT recommended when logging to file).",
+    )
+    parser.add_argument(
         "--num_epochs",
         type=int,
         default=5,
@@ -125,7 +132,7 @@ if __name__ == "__main__":
 
     # Interpretation model
     parser.add_argument(
-        "alpha",
+        "--alpha",
         type=float,
         default=1.0,
         help="Intial value for the Lagrangian",
