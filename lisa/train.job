@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=Patch-DiffMask
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --time=01:00:00
+#SBATCH --mem=32000M
+#SBATCH --output=lisa/outputs/patch_diffmask_train_%A.out
+
+module purge
+module load 2021
+module load Anaconda3/2021.05
+
+source activate dl2
+
+srun python -u code/main.py --add_activation 10.0 --num_epochs 1 --num_workers 3
