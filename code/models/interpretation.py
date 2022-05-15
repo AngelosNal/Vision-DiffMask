@@ -261,11 +261,11 @@ class ImageInterpretationNet(pl.LightningModule):
         # Forward input through freezed ViT & collect hidden states
         hidden_states = self.model(x, output_hidden_states=True).hidden_states
 
-        # Forward hidden states through DiffMask TODO: change 11 to None
-        log_expected_L0 = self.gate(hidden_states=hidden_states, layer_pred=11)[-1]
+        # Forward hidden states through DiffMask
+        _, _, expected_L0, _, _ = self.gate(hidden_states=hidden_states, layer_pred=None)
 
         # Calculate mask
-        mask = log_expected_L0.sum(-1).exp()
+        mask = expected_L0.exp()
         mask = mask[:, 1:]
 
         # Reshape mask to match input shape
