@@ -258,8 +258,16 @@ class ImageInterpretationNet(pl.LightningModule):
         return optimizers, schedulers
 
     def get_mask(self, x: Tensor) -> Tensor:
+        # TODO: change with forward_explainer
         # Forward input through freezed ViT & collect hidden states
-        hidden_states = self.model(x, output_hidden_states=True).hidden_states
+        _, hidden_states = vit_getter(self.model, x)
+
+        # Add [CLS] token to deal with shape mismatch in self.gate() call
+        patch_embeddings = hidden_states[0]
+        batch_size = len(patch_embeddings)
+
+        cls_tokens = self.model.vit.embeddings.cls_token.expand(batch_size, -1, -1)
+        hidden_states[0] = torch.cat((cls_tokens, patch_embeddings), dim=1)
 
         # Forward hidden states through DiffMask
         _, _, expected_L0, _, _ = self.gate(hidden_states=hidden_states, layer_pred=None)
