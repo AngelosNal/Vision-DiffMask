@@ -354,3 +354,6 @@ data/
 # Ignore tmp files
 Untitled*
 tmp*
+
+# Ignore lisa outputs
+*.out
