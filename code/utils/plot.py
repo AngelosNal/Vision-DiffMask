@@ -31,6 +31,22 @@ def unnormalize(
     return unnormalized_images
 
 
+def smoothen(mask: Tensor, patch_size: int = 16) -> Tensor:
+    """This function smoothens a mask by downsampling it and upsampling it with linear interpolation.
+
+    Args:
+        mask (Tensor): a 2D float torch tensor in [0, 1].
+        patch_size (int): the patch_size in pixels.
+
+    Returns:
+        A smoothened mask.
+    """
+    (h, w) = mask.shape
+    mask = cv2.resize(mask.numpy(), (h // patch_size, w // patch_size), interpolation=cv2.INTER_NEAREST)
+    mask = cv2.resize(mask, (h, w), interpolation=cv2.INTER_LINEAR)
+    return torch.tensor(mask)
+
+
 def draw_mask_on_image(image: Tensor, mask: Tensor) -> Tensor:
     """This function overlays a dimming mask on the image.
 
@@ -87,7 +103,7 @@ class DrawMaskCallback(Callback):
         # Predict mask
         with torch.no_grad():
             pl_module.eval()
-            masks = pl_module.get_mask(self.sample_images)
+            masks = [smoothen(m) for m in pl_module.get_mask(self.sample_images)]
             pl_module.train()
 
         # Draw mask on sample images
@@ -110,7 +126,7 @@ class DrawMaskCallback(Callback):
         ], dim=1)
 
         # Compute masking percentage
-        masked_pixels_percentage = 100 * (1 - masks.mean().item())
+        masked_pixels_percentage = 100 * (1 - torch.stack(masks).mean().item())
 
         # Log with wandb
         trainer.logger.log_image(
