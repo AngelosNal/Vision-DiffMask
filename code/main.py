@@ -22,6 +22,7 @@ def get_experiment_name(args: argparse.Namespace):
         "batch_size",
         "data_dir",
         "enable_progress_bar",
+        "log_every_n_steps",
         "num_epochs",
         "num_workers",
         "sample_images",
@@ -85,16 +86,17 @@ def main(args: argparse.Namespace):
     # Create checkpoint callback
     ckpt_cb = ModelCheckpoint(
         # TODO: add more args (probably monitor some metric)
-        dirpath=f"checkpoints/{wandb_logger.version}"
+        dirpath=f"checkpoints/{wandb_logger.version}",
+        every_n_train_steps=args.log_every_n_steps,
     )
 
     # Sample images & create mask callback
     sample_images = torch.stack([dm.val_data[i][0] for i in range(8)])
-    mask_cb1 = DrawMaskCallback(sample_images, key='1')
+    mask_cb1 = DrawMaskCallback(sample_images, log_every_n_steps=args.log_every_n_steps, key='1')
     sample_images = torch.stack([dm.val_data[i][0] for i in range(8, 16)])
-    mask_cb2 = DrawMaskCallback(sample_images, key='2')
+    mask_cb2 = DrawMaskCallback(sample_images, log_every_n_steps=args.log_every_n_steps, key='2')
     sample_images = torch.stack([dm.val_data[i][0] for i in range(16, 24)])
-    mask_cb3 = DrawMaskCallback(sample_images, key='3')
+    mask_cb3 = DrawMaskCallback(sample_images, log_every_n_steps=args.log_every_n_steps, key='3')
 
     # Train
     trainer = pl.Trainer(
@@ -136,6 +138,12 @@ if __name__ == "__main__":
         type=int,
         default=8,
         help="Number of images to sample for the mask callback.",
+    )
+    parser.add_argument(
+        "--log_every_n_steps",
+        type=int,
+        default=200,
+        help="Number of steps between logging media & checkpoints.",
     )
 
     # Classification model
