@@ -96,9 +96,10 @@ def draw_heatmap_on_image(
 
 
 class DrawMaskCallback(Callback):
-    def __init__(self, sample_images: Tensor, log_every_n_steps: int = 200):
-        self.sample_images = unnormalize(sample_images)
+    def __init__(self, sample_images: Tensor, log_every_n_steps: int = 200, key: str = ""):
+        self.sample_images = sample_images
         self.log_every_n_steps = log_every_n_steps
+        self.key = key
 
     def _log_masks(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # Predict mask
@@ -108,7 +109,7 @@ class DrawMaskCallback(Callback):
             pl_module.train()
 
         # Draw mask on sample images
-        sample_images = [image for image in self.sample_images]
+        sample_images = [image for image in unnormalize(self.sample_images)]
 
         sample_images_with_mask = [
             draw_mask_on_image(image, mask) for image, mask in zip(sample_images, masks)
@@ -131,7 +132,7 @@ class DrawMaskCallback(Callback):
 
         # Log with wandb
         trainer.logger.log_image(
-            key="Masked images",
+            key=f"Masked images {self.key}",
             images=[samples],
             caption=[f"Percentage of masked pixels: {masked_pixels_percentage}"],
         )
