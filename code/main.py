@@ -74,6 +74,7 @@ def main(args: argparse.Namespace):
         mul_activation=args.mul_activation,
         add_activation=args.add_activation,
         placeholder=not args.no_placeholder,
+        weighted_layer_pred=args.weighted_layer_distribution,
     )
     diffmask.set_vision_transformer(model)
 
@@ -201,6 +202,11 @@ if __name__ == "__main__":
         type=float,
         default=8.0,
         help="Value to add to gate activations.",
+    )
+    parser.add_argument(
+        "--weighted_layer_distribution",
+        action="store_true",
+        help="Whether to use a weighted distribution when picking a layer in DiffMask forward.",
     )
 
     # Datamodule

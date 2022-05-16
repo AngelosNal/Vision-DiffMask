@@ -33,7 +33,8 @@ class ImageInterpretationNet(pl.LightningModule):
         lr_alpha: float = 0.3,
         mul_activation: float = 10.0,
         add_activation: float = 5.0,
-        placeholder: bool = False,
+        placeholder: bool = True,
+        weighted_layer_pred: bool = False,
     ):
         super().__init__()
 
@@ -83,7 +84,21 @@ class ImageInterpretationNet(pl.LightningModule):
         cls_tokens = self.model.vit.embeddings.cls_token.expand(batch_size, -1, -1)
         hidden_states[0] = torch.cat((cls_tokens, patch_embeddings), dim=1)
 
-        layer_pred = torch.randint(len(hidden_states), ()).item()
+        n_hidden = len(hidden_states)
+        if self.hparams.weighted_layer_pred:
+            low_weight = (
+                lambda i: self.running_acc[i] > 0.75
+                and self.running_l0[i] < 0.1
+                and self.running_steps[i] > 100
+            )
+            layers = torch.tensor(list(range(n_hidden)))
+            p = torch.tensor([0.1 if low_weight(i) else 1 for i in range(n_hidden)])
+            p = p / p.sum()
+            idx = p.multinomial(num_samples=1)
+            layer_pred = layers[idx].item()
+        else:
+            layer_pred = torch.randint(n_hidden, ()).item()
+
         layer_drop = 0
 
         (
@@ -105,7 +120,7 @@ class ImageInterpretationNet(pl.LightningModule):
             new_hidden_states = (
                 [None] * layer_drop
                 + [new_hidden_state]
-                + [None] * (len(hidden_states) - layer_drop - 1)
+                + [None] * (n_hidden - layer_drop - 1)
             )
 
             logits, _ = vit_setter(self.model, x, new_hidden_states)
