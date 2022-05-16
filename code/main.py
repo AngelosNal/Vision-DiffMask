@@ -72,6 +72,7 @@ def main(args: argparse.Namespace):
         lr_alpha=args.lr_alpha,
         mul_activation=args.mul_activation,
         add_activation=args.add_activation,
+        placeholder=args.placeholder,
     )
     diffmask.set_vision_transformer(model)
 
@@ -159,6 +160,12 @@ if __name__ == "__main__":
         type=float,
         default=0.1,
         help="KL divergence tolerance.",
+    )
+    parser.add_argument(
+        "--placeholder",
+        type=bool,
+        default=False,
+        help="Whether to use placeholder",
     )
     parser.add_argument(
         "--lr_placeholder",

@@ -41,10 +41,11 @@ def smoothen(mask: Tensor, patch_size: int = 16) -> Tensor:
     Returns:
         A smoothened mask.
     """
+    device = mask.device
     (h, w) = mask.shape
-    mask = cv2.resize(mask.numpy(), (h // patch_size, w // patch_size), interpolation=cv2.INTER_NEAREST)
+    mask = cv2.resize(mask.cpu().numpy(), (h // patch_size, w // patch_size), interpolation=cv2.INTER_NEAREST)
     mask = cv2.resize(mask, (h, w), interpolation=cv2.INTER_LINEAR)
-    return torch.tensor(mask)
+    return torch.tensor(mask).to(device)
 
 
 def draw_mask_on_image(image: Tensor, mask: Tensor) -> Tensor:

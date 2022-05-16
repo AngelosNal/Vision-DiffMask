@@ -33,6 +33,7 @@ class ImageInterpretationNet(pl.LightningModule):
         lr_alpha: float = 0.3,
         mul_activation: float = 10.0,
         add_activation: float = 5.0,
+        placeholder: bool = False,
     ):
         super().__init__()
 
@@ -45,6 +46,7 @@ class ImageInterpretationNet(pl.LightningModule):
             max_position_embeddings=1,
             mul_activation=mul_activation,
             add_activation=add_activation,
+            placeholder=placeholder,
         )
 
         self.alpha = torch.nn.ParameterList(
