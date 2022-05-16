@@ -21,7 +21,7 @@ def get_experiment_name(args: argparse.Namespace):
         "add_rotation",
         "batch_size",
         "data_dir",
-        "enable_progress_bar"
+        "enable_progress_bar",
         "num_epochs",
         "num_workers",
         "sample_images",
@@ -72,7 +72,7 @@ def main(args: argparse.Namespace):
         lr_alpha=args.lr_alpha,
         mul_activation=args.mul_activation,
         add_activation=args.add_activation,
-        placeholder=args.placeholder,
+        placeholder=not args.no_placeholder,
     )
     diffmask.set_vision_transformer(model)
 
@@ -90,12 +90,16 @@ def main(args: argparse.Namespace):
 
     # Sample images & create mask callback
     sample_images = torch.stack([dm.val_data[i][0] for i in range(8)])
-    mask_cb = DrawMaskCallback(sample_images)
+    mask_cb1 = DrawMaskCallback(sample_images, key='1')
+    sample_images = torch.stack([dm.val_data[i][0] for i in range(8, 16)])
+    mask_cb2 = DrawMaskCallback(sample_images, key='2')
+    sample_images = torch.stack([dm.val_data[i][0] for i in range(16, 24)])
+    mask_cb3 = DrawMaskCallback(sample_images, key='3')
 
     # Train
     trainer = pl.Trainer(
         accelerator="auto",
-        callbacks=[ckpt_cb, mask_cb],
+        callbacks=[ckpt_cb, mask_cb1, mask_cb2, mask_cb3],
         enable_progress_bar=args.enable_progress_bar,
         logger=wandb_logger,
         max_epochs=args.num_epochs,
@@ -146,13 +150,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--alpha",
         type=float,
-        default=1.0,
+        default=20.0,
         help="Intial value for the Lagrangian",
     )
     parser.add_argument(
         "--lr",
         type=float,
-        default=3e-4,
+        default=2e-5,
         help="Learning rate for diffmask.",
     )
     parser.add_argument(
@@ -162,10 +166,9 @@ if __name__ == "__main__":
         help="KL divergence tolerance.",
     )
     parser.add_argument(
-        "--placeholder",
-        type=bool,
-        default=False,
-        help="Whether to use placeholder",
+        "--no_placeholder",
+        action="store_true",
+        help="Whether to not use placeholder",
     )
     parser.add_argument(
         "--lr_placeholder",
@@ -182,13 +185,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mul_activation",
         type=float,
-        default=10.0,
+        default=15.0,
         help="Value to mutliply gate activations.",
     )
     parser.add_argument(
         "--add_activation",
         type=float,
-        default=5.0,
+        default=8.0,
         help="Value to add to gate activations.",
     )
 
@@ -196,7 +199,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=64,
+        default=16,
         help="The batch size to use.",
     )
     parser.add_argument(
