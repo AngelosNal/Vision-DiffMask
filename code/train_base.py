@@ -120,6 +120,7 @@ def main(args: argparse.Namespace):
         callbacks=[ckpt_cb, es_cb],
         logger=wandb_logger,
         max_epochs=args.num_epochs,
+        enable_progress_bar=args.enable_progress_bar,
     )
 
     trainer_args = {}
@@ -181,6 +182,12 @@ if __name__ == "__main__":
         type=int,
         default=64,
         help="Batch size for training.",
+    )
+
+    parser.add_argument(
+        "--enable_progress_bar",
+        action="store_true",
+        help="Whether to show progress bar during training. NOT recommended when logging to files.",
     )
 
     args = parser.parse_args()
