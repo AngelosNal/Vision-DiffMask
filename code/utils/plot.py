@@ -24,7 +24,6 @@ def unnormalize(
         Tensor: the batch of images unnormalized.
     """
     unnormalized_images = images.clone()
-
     for i, (m, s) in enumerate(zip(mean, std)):
         unnormalized_images[:, i, :, :].mul_(s).add_(m)
 
@@ -100,6 +99,7 @@ class DrawMaskCallback(Callback):
         self.sample_images = sample_images
         self.log_every_n_steps = log_every_n_steps
         self.key = key
+        self.num_channels = self.sample_images[0].shape[0]
 
     def _log_masks(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # Predict mask
@@ -109,7 +109,14 @@ class DrawMaskCallback(Callback):
             pl_module.train()
 
         # Draw mask on sample images
-        sample_images = [image for image in unnormalize(self.sample_images)]
+        if self.num_channels == 1:
+            sample_images = [image for image in unnormalize(self.sample_images, mean=[0.5], std=[0.5])]
+        else:
+            sample_images = [image for image in unnormalize(self.sample_images)]
+        
+        # Check if there are 1 or 3 channels in the image
+        if self.num_channels == 1:
+            sample_images = [torch.repeat_interleave(sample_image, 3, 0) for sample_image in sample_images]
 
         sample_images_with_mask = [
             draw_mask_on_image(image, mask) for image, mask in zip(sample_images, masks)

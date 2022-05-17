@@ -2,12 +2,12 @@ import argparse
 import pytorch_lightning as pl
 import torch
 
-from datamodules import CIFAR10DataModule
 from models.interpretation import ImageInterpretationNet
 from transformers import ViTFeatureExtractor, ViTForImageClassification
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from utils.plot import DrawMaskCallback
+from utils.datamodule_utils import datamodule_factory
 
 
 def get_experiment_name(args: argparse.Namespace):
@@ -47,17 +47,8 @@ def main(args: argparse.Namespace):
     # Load pre-trained Transformer
     model = ViTForImageClassification.from_pretrained(args.vit_model)
 
-    # Load CIFAR10 datamodule
-    dm = CIFAR10DataModule(
-        batch_size=args.batch_size,
-        feature_extractor=ViTFeatureExtractor.from_pretrained(
-            args.vit_model, return_tensors="pt"
-        ),
-        noise=args.add_noise,
-        rotation=args.add_rotation,
-        blur=args.add_blur,
-        num_workers=args.num_workers,
-    )
+    # Load datamodule
+    dm = datamodule_factory(args)
 
     # Setup datamodule to sample images for the mask callback
     dm.prepare_data()
