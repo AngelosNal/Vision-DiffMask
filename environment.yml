@@ -3,7 +3,6 @@ channels:
   - pytorch
   - conda-forge
   - defaults
-  - huggingface
 dependencies:
   # python
   - python=3.9.12
@@ -12,10 +11,9 @@ dependencies:
   - pytorch=1.11.0
   - pytorch-lightning=1.6.3
   - torchvision=0.12.0
-  # hugging face
-  - transformers=4.16.2 
   # misc
   - jupyter=1.0.0
   - pip:
     - opencv-python==4.5.5.64
     - wandb==0.12.16
+    - transformers==4.19.2
