@@ -93,6 +93,7 @@ def main(args: argparse.Namespace):
     dm_cfg = {
         "batch_size": args.batch_size,
         "feature_extractor": feature_extractor,
+        "num_workers": args.num_workers,
     }
     if args.dataset == "mnist":
         dm = MNISTDataModule(**dm_cfg)
@@ -132,6 +133,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     ImageClassificationNet.add_model_specific_args(parser)
+
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=4,
+        help="Number of workers to use for data loading.",
+    )
 
     parser.add_argument(
         "--num_epochs",
