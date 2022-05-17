@@ -1,5 +1,6 @@
 import argparse
 import pytorch_lightning as pl
+import torch
 
 from datamodules import CIFAR10DataModule, MNISTDataModule
 from models.classification import ImageClassificationNet
@@ -45,7 +46,6 @@ def main(args: argparse.Namespace):
     pl.seed_everything(123)
 
     if args.base_model == "vit":
-
         # Create a new Vision Transformer
         if args.from_pretrained:
             config = ViTConfig.from_pretrained(args.from_pretrained, num_labels=10)
@@ -63,14 +63,17 @@ def main(args: argparse.Namespace):
         )
     elif args.base_model == "convnext":
         # Create a new ConvNext model
-        if args.from_pretrained:
-            config = ConvNextConfig.from_pretrained(args.from_pretrained, num_labels=10)
-            fe_cfg_args = {}
-        else:
-            model_cfg_args, fe_cfg_args = get_configs(args)
-            config = ConvNextConfig(num_labels=10, **model_cfg_args)
+        model_cfg_args, fe_cfg_args = get_configs(args)
 
-        base = ConvNextForImageClassification(config)
+        if args.from_pretrained:
+            config = ConvNextConfig.from_pretrained(args.from_pretrained)
+            base = ConvNextForImageClassification.from_pretrained(args.from_pretrained)
+            in_features = base.classifier.in_features
+            base.classifier = torch.nn.Linear(in_features, 10)
+        else:
+            config = ConvNextConfig(num_labels=10, **model_cfg_args)
+            base = ConvNextForImageClassification(config)
+
         # Create a Feature Extractor for MNIST
         feature_extractor = ConvNextFeatureExtractor(
             size=config.image_size,
