@@ -7,22 +7,38 @@ Pytorch Lightning module for Image Classification
 import pytorch_lightning as pl
 import torch.nn.functional as F
 
+from argparse import ArgumentParser
 from torch import Tensor
 from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import _LRScheduler, MultiStepLR
-from transformers import ViTForImageClassification
+from transformers import PreTrainedModel
 from typing import List, Tuple
 
 
 class ImageClassificationNet(pl.LightningModule):
-    """Vision Transformer wrapper for image classification.
+    @staticmethod
+    def add_model_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
+        parser = parent_parser.add_argument_group("Model")
+        parser.add_argument(
+            "--lr",
+            type=float,
+            default=3e-4,
+            help="The initial learning rate for the model.",
+        )
+        return parent_parser
+
+    """HuggingFace model wrapper for image classification.
 
     Args:
-        model (ViTForImageClassification): a ViT for image classification
+        model (PreTrainedModel): a pretrained model for image classification
         lr (float): the learning rate used for training (no warm-up learning rate used)
     """
 
-    def __init__(self, model: ViTForImageClassification, lr: float = 3e-4):
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        lr: float = 3e-4,
+    ):
         super().__init__()
 
         self.save_hyperparameters(ignore=["model"])
