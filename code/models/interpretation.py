@@ -3,8 +3,9 @@ import torch
 import torch.nn.functional as F
 
 from .gates import DiffMaskGateInput
+from argparse import ArgumentParser
 from math import sqrt
-from optimizer import LookaheadRMSprop, LookaheadAdam
+from optimizer import LookaheadAdam
 from pytorch_lightning.core.optimizer import LightningOptimizer
 from torch import Tensor
 from torch.optim import Optimizer
@@ -21,6 +22,63 @@ from utils.metrics import accuracy_precision_recall_f1
 
 
 class ImageInterpretationNet(pl.LightningModule):
+    @staticmethod
+    def add_model_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
+        parser = parent_parser.add_argument_group("Interpretation Model")
+        parser.add_argument(
+            "--alpha",
+            type=float,
+            default=20.0,
+            help="Initial value for the Lagrangian",
+        )
+        parser.add_argument(
+            "--lr",
+            type=float,
+            default=2e-5,
+            help="Learning rate for DiffMask.",
+        )
+        parser.add_argument(
+            "--eps",
+            type=float,
+            default=0.1,
+            help="KL divergence tolerance.",
+        )
+        parser.add_argument(
+            "--no_placeholder",
+            action="store_true",
+            help="Whether to not use placeholder",
+        )
+        parser.add_argument(
+            "--lr_placeholder",
+            type=float,
+            default=1e-3,
+            help="Learning for mask vectors.",
+        )
+        parser.add_argument(
+            "--lr_alpha",
+            type=float,
+            default=0.3,
+            help="Learning rate for lagrangian optimizer.",
+        )
+        parser.add_argument(
+            "--mul_activation",
+            type=float,
+            default=15.0,
+            help="Value to multiply gate activations.",
+        )
+        parser.add_argument(
+            "--add_activation",
+            type=float,
+            default=8.0,
+            help="Value to add to gate activations.",
+        )
+        parser.add_argument(
+            "--weighted_layer_distribution",
+            action="store_true",
+            help="Whether to use a weighted distribution when picking a layer in DiffMask forward.",
+        )
+        return parent_parser
+
     def __init__(
         self,
         model_cfg: ViTConfig,
@@ -287,7 +345,9 @@ class ImageInterpretationNet(pl.LightningModule):
         hidden_states[0] = torch.cat((cls_tokens, patch_embeddings), dim=1)
 
         # Forward hidden states through DiffMask
-        _, _, expected_L0, _, _ = self.gate(hidden_states=hidden_states, layer_pred=None)
+        _, _, expected_L0, _, _ = self.gate(
+            hidden_states=hidden_states, layer_pred=None
+        )
 
         # Calculate mask
         mask = expected_L0.exp()

@@ -1,13 +1,16 @@
+from datamodules import CIFAR10QADataModule, ImageDataModule
+from datamodules.utils import datamodule_factory
+from functools import partial
+from models.interpretation import ImageInterpretationNet
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
+from transformers import ViTForImageClassification
+from typing import Generator
+from utils.plot import DrawMaskCallback
+
 import argparse
 import pytorch_lightning as pl
 import torch
-
-from models.interpretation import ImageInterpretationNet
-from transformers import ViTFeatureExtractor, ViTForImageClassification
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import WandbLogger
-from utils.plot import DrawMaskCallback
-from utils.datamodule_utils import datamodule_factory
 
 
 def get_experiment_name(args: argparse.Namespace):
@@ -40,12 +43,19 @@ def get_experiment_name(args: argparse.Namespace):
     )
 
 
+def sample_images_generator(
+    dm: ImageDataModule, n_images: int = 8
+) -> Generator[torch.Tensor, None, None]:
+    for x, _ in iter(dm.val_dataloader()):
+        yield x[:n_images]
+
+
 def main(args: argparse.Namespace):
     # Seed
     pl.seed_everything(args.seed)
 
     # Load pre-trained Transformer
-    model = ViTForImageClassification.from_pretrained(args.vit_model)
+    model = ViTForImageClassification.from_pretrained(args.from_pretrained)
 
     # Load datamodule
     dm = datamodule_factory(args)
@@ -83,12 +93,14 @@ def main(args: argparse.Namespace):
     )
 
     # Sample images & create mask callback
-    sample_images = torch.stack([dm.val_data[i][0] for i in range(8)])
-    mask_cb1 = DrawMaskCallback(sample_images, log_every_n_steps=args.log_every_n_steps, key='1')
-    sample_images = torch.stack([dm.val_data[i][0] for i in range(8, 16)])
-    mask_cb2 = DrawMaskCallback(sample_images, log_every_n_steps=args.log_every_n_steps, key='2')
-    sample_images = torch.stack([dm.val_data[i][0] for i in range(16, 24)])
-    mask_cb3 = DrawMaskCallback(sample_images, log_every_n_steps=args.log_every_n_steps, key='3')
+    sample_images = sample_images_generator(dm)
+    mask_cb = partial(
+        DrawMaskCallback,
+        log_every_n_steps=args.log_every_n_steps,
+    )
+    mask_cb1 = mask_cb(next(sample_images), key="1")
+    mask_cb2 = mask_cb(next(sample_images), key="2")
+    mask_cb3 = mask_cb(next(sample_images), key="3")
 
     # Train
     trainer = pl.Trainer(
@@ -123,7 +135,7 @@ if __name__ == "__main__":
         default=123,
         help="Random seed for reproducibility.",
     )
-    
+
     # Logging
     parser.add_argument(
         "--sample_images",
@@ -138,107 +150,34 @@ if __name__ == "__main__":
         help="Number of steps between logging media & checkpoints.",
     )
 
-    # Classification model
+    # Base (classification) model
     parser.add_argument(
-        "--vit_model",
+        "--base_model",
         type=str,
+        default="ViT",
+        choices=["ViT"],
+        help="Base model architecture to train.",
+    )
+    parser.add_argument(
+        "--from_pretrained",
+        type=str,
+        required=True,
         default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
-        help="Pre-trained Vision Transformer (ViT) model to load.",
+        help="The name of the pretrained HF model to load.",
     )
 
     # Interpretation model
-    parser.add_argument(
-        "--alpha",
-        type=float,
-        default=20.0,
-        help="Intial value for the Lagrangian",
-    )
-    parser.add_argument(
-        "--lr",
-        type=float,
-        default=2e-5,
-        help="Learning rate for diffmask.",
-    )
-    parser.add_argument(
-        "--eps",
-        type=float,
-        default=0.1,
-        help="KL divergence tolerance.",
-    )
-    parser.add_argument(
-        "--no_placeholder",
-        action="store_true",
-        help="Whether to not use placeholder",
-    )
-    parser.add_argument(
-        "--lr_placeholder",
-        type=float,
-        default=1e-3,
-        help="Learning for mask vectors.",
-    )
-    parser.add_argument(
-        "--lr_alpha",
-        type=float,
-        default=0.3,
-        help="Learning rate for lagrangian optimizer.",
-    )
-    parser.add_argument(
-        "--mul_activation",
-        type=float,
-        default=15.0,
-        help="Value to mutliply gate activations.",
-    )
-    parser.add_argument(
-        "--add_activation",
-        type=float,
-        default=8.0,
-        help="Value to add to gate activations.",
-    )
-    parser.add_argument(
-        "--weighted_layer_distribution",
-        action="store_true",
-        help="Whether to use a weighted distribution when picking a layer in DiffMask forward.",
-    )
+    ImageInterpretationNet.add_model_specific_args(parser)
 
     # Datamodule
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=16,
-        help="The batch size to use.",
-    )
+    ImageDataModule.add_model_specific_args(parser)
+    CIFAR10QADataModule.add_model_specific_args(parser)
     parser.add_argument(
         "--dataset",
         type=str,
         default="CIFAR10",
+        choices=["MNIST", "CIFAR10", "CIFAR10_QA"],
         help="The dataset to use.",
-    )
-    parser.add_argument(
-        "--data_dir",
-        type=str,
-        default="data/",
-        help="The data directory to use.",
-    )
-    parser.add_argument(
-        "--num_workers",
-        type=int,
-        default=4,
-        help="The number of workers to use.",
-    )
-    parser.add_argument(
-        "--add_noise",
-        action="store_true",
-        help="Use gaussian noise augmentation.",
-    )
-    parser.add_argument(
-        "--add_rotation",
-        action="store_true",
-        help="Use rotation augmentation.",
-    )
-    parser.add_argument(
-        "--add_blur",
-        action="store_true",
-        help="Use blur augmentation.",
     )
 
     args = parser.parse_args()

@@ -10,8 +10,8 @@ from torch import Tensor
 
 def unnormalize(
     images: Tensor,
-    mean: tuple[int] = (0.5, 0.5, 0.5),
-    std: tuple[int] = (0.5, 0.5, 0.5),
+    mean: tuple[float] = (0.5, 0.5, 0.5),
+    std: tuple[float] = (0.5, 0.5, 0.5),
 ) -> Tensor:
     """Reverts the normalization transformation applied before ViT.
 
@@ -42,7 +42,11 @@ def smoothen(mask: Tensor, patch_size: int = 16) -> Tensor:
     """
     device = mask.device
     (h, w) = mask.shape
-    mask = cv2.resize(mask.cpu().numpy(), (h // patch_size, w // patch_size), interpolation=cv2.INTER_NEAREST)
+    mask = cv2.resize(
+        mask.cpu().numpy(),
+        (h // patch_size, w // patch_size),
+        interpolation=cv2.INTER_NEAREST,
+    )
     mask = cv2.resize(mask, (h, w), interpolation=cv2.INTER_LINEAR)
     return torch.tensor(mask).to(device)
 
@@ -95,7 +99,12 @@ def draw_heatmap_on_image(
 
 
 class DrawMaskCallback(Callback):
-    def __init__(self, sample_images: Tensor, log_every_n_steps: int = 200, key: str = ""):
+    def __init__(
+        self,
+        sample_images: Tensor,
+        log_every_n_steps: int = 200,
+        key: str = "",
+    ):
         self.sample_images = sample_images
         self.log_every_n_steps = log_every_n_steps
         self.key = key
@@ -110,13 +119,19 @@ class DrawMaskCallback(Callback):
 
         # Draw mask on sample images
         if self.num_channels == 1:
-            sample_images = [image for image in unnormalize(self.sample_images, mean=[0.5], std=[0.5])]
+            sample_images = [
+                image
+                for image in unnormalize(self.sample_images, mean=(0.5,), std=(0.5,))
+            ]
         else:
             sample_images = [image for image in unnormalize(self.sample_images)]
-        
+
         # Check if there are 1 or 3 channels in the image
         if self.num_channels == 1:
-            sample_images = [torch.repeat_interleave(sample_image, 3, 0) for sample_image in sample_images]
+            sample_images = [
+                torch.repeat_interleave(sample_image, 3, 0)
+                for sample_image in sample_images
+            ]
 
         sample_images_with_mask = [
             draw_mask_on_image(image, mask) for image, mask in zip(sample_images, masks)
@@ -126,13 +141,16 @@ class DrawMaskCallback(Callback):
             draw_heatmap_on_image(image, mask)
             for image, mask in zip(sample_images, masks)
         ]
-        
+
         # Merge sample images into one image
-        samples = torch.cat([
-            torch.cat(sample_images, dim=2),
-            torch.cat(sample_images_with_mask, dim=2),
-            torch.cat(sample_images_with_heatmap, dim=2),
-        ], dim=1)
+        samples = torch.cat(
+            [
+                torch.cat(sample_images, dim=2),
+                torch.cat(sample_images_with_mask, dim=2),
+                torch.cat(sample_images_with_heatmap, dim=2),
+            ],
+            dim=1,
+        )
 
         # Compute masking percentage
         masked_pixels_percentage = 100 * (1 - torch.stack(masks).mean().item())
@@ -147,7 +165,7 @@ class DrawMaskCallback(Callback):
     def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
         # Transfer sample images to correct device
         self.sample_images = self.sample_images.to(pl_module.device)
-        
+
         # Log sample images
         self._log_masks(trainer, pl_module)
 

@@ -1,12 +1,11 @@
-import argparse
-import pytorch_lightning as pl
-
 from datamodules import CIFAR10QADataModule, ImageDataModule
 from datamodules.utils import datamodule_factory
 from models.classification import ImageClassificationNet
 from models.utils import model_factory
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
+
+import argparse
+import pytorch_lightning as pl
 
 
 def main(args: argparse.Namespace):
@@ -14,49 +13,36 @@ def main(args: argparse.Namespace):
     pl.seed_everything(args.seed)
 
     # Create base model
-    base = model_factory(args)
+    base = model_factory(args, own_config=True)
 
     # Load datamodule
     dm = datamodule_factory(args)
-    dm.prepare_data()
-    dm.setup("fit")
 
-    if args.checkpoint:
-        model = ImageClassificationNet.load_from_checkpoint(args.checkpoint, model=base)
-    else:
-        model = ImageClassificationNet(
-            model=base,
-            num_train_steps=args.num_epochs * len(dm.train_dataloader()),
-            optimizer=args.optimizer,
-            weight_decay=args.weight_decay,
-            lr=args.lr,
-        )
+    model = ImageClassificationNet.load_from_checkpoint(
+        args.checkpoint,
+        model=base,
+        num_train_steps=0,
+    )
 
     # Create wandb logger
     wandb_logger = WandbLogger(
-        name=f"{args.dataset}_training_{args.base_model} ({args.from_pretrained})",
+        name=f"{args.dataset}_eval_{args.base_model} ({args.from_pretrained})",
         project="Patch-DiffMask",
     )
-
-    # Create checkpoint callback
-    ckpt_cb = ModelCheckpoint(dirpath=f"checkpoints/{wandb_logger.version}")
-    # Create early stopping callback
-    es_cb = EarlyStopping(monitor="val_acc", mode="max", patience=5)
 
     # Train
     trainer = pl.Trainer(
         accelerator="auto",
-        callbacks=[ckpt_cb, es_cb],
         logger=wandb_logger,
-        max_epochs=args.num_epochs,
+        max_epochs=1,
         enable_progress_bar=args.enable_progress_bar,
     )
 
-    trainer_args = {}
-    if args.checkpoint:
-        trainer_args["ckpt_path"] = args.checkpoint
+    trainer.test(model, dm)
 
-    trainer.fit(model, dm, **trainer_args)
+    save_dir = f"checkpoints/{args.base_model}_{args.dataset}"
+    model.model.save_pretrained(save_dir)
+    dm.feature_extractor.save_pretrained(save_dir)
 
 
 if __name__ == "__main__":
@@ -65,6 +51,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint",
         type=str,
+        required=True,
         help="Checkpoint to resume the training from.",
     )
 
@@ -75,12 +62,6 @@ if __name__ == "__main__":
         help="Whether to show progress bar during training. NOT recommended when logging to files.",
     )
     parser.add_argument(
-        "--num_epochs",
-        type=int,
-        default=5,
-        help="Number of epochs to train.",
-    )
-    parser.add_argument(
         "--seed",
         type=int,
         default=123,
@@ -88,7 +69,6 @@ if __name__ == "__main__":
     )
 
     # Base (classification) model
-    ImageClassificationNet.add_model_specific_args(parser)
     parser.add_argument(
         "--base_model",
         type=str,
@@ -109,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        default="CIFAR10",
+        default="CIFAR10_QA",
         choices=["MNIST", "CIFAR10", "CIFAR10_QA"],
         help="The dataset to use.",
     )
