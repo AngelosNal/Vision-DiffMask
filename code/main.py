@@ -45,9 +45,9 @@ def get_experiment_name(args: argparse.Namespace):
 
 def sample_images_generator(
     dm: ImageDataModule, n_images: int = 8
-) -> Generator[torch.Tensor, None, None]:
-    for x, _ in iter(dm.val_dataloader()):
-        yield x[:n_images]
+) -> Generator[torch.Tensor, torch.Tensor, None]:
+    for x, y in iter(dm.val_dataloader()):
+        yield x[:n_images], y[:n_images]
 
 
 def main(args: argparse.Namespace):

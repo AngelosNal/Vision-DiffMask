@@ -101,11 +101,12 @@ def draw_heatmap_on_image(
 class DrawMaskCallback(Callback):
     def __init__(
         self,
-        sample_images: Tensor,
+        sample_images: list,
         log_every_n_steps: int = 200,
         key: str = "",
     ):
-        self.sample_images = sample_images
+        self.sample_images = torch.stack([sample for sample in sample_images[0]])
+        self.labels = [sample.item() for sample in sample_images[1]]
         self.log_every_n_steps = log_every_n_steps
         self.key = key
         self.num_channels = self.sample_images[0].shape[0]
@@ -114,8 +115,16 @@ class DrawMaskCallback(Callback):
         # Predict mask
         with torch.no_grad():
             pl_module.eval()
-            masks = [smoothen(m) for m in pl_module.get_mask(self.sample_images)]
+            outputs = pl_module.get_mask(self.sample_images)
             pl_module.train()
+
+        # Unnest outputs
+        masks = outputs["mask"]
+        kl_divs = outputs["kl_div"]
+        pred_classes = outputs["pred_class"].cpu()
+
+        # Smoothen masks
+        masks = [smoothen(m) for m in masks]
 
         # Draw mask on sample images
         if self.num_channels == 1:
@@ -142,24 +151,29 @@ class DrawMaskCallback(Callback):
             for image, mask in zip(sample_images, masks)
         ]
 
-        # Merge sample images into one image
-        samples = torch.cat(
-            [
-                torch.cat(sample_images, dim=2),
-                torch.cat(sample_images_with_mask, dim=2),
-                torch.cat(sample_images_with_heatmap, dim=2),
-            ],
-            dim=1,
-        )
+        # Chunk to triplets (image, masked image, heatmap)
+        samples = torch.cat([
+            torch.cat(sample_images, dim=2),
+            torch.cat(sample_images_with_mask, dim=2),
+            torch.cat(sample_images_with_heatmap, dim=2),
+        ], dim=1).chunk(len(sample_images), dim=-1)
+
 
         # Compute masking percentage
-        masked_pixels_percentage = 100 * (1 - torch.stack(masks).mean().item())
+        masked_pixels_percentages = [100 * (1 - torch.stack(masks)[i].mean(-1).mean(-1).item()) for i in
+                                     range(len(masks))]
 
         # Log with wandb
         trainer.logger.log_image(
-            key=f"Masked images {self.key}",
-            images=[samples],
-            caption=[f"Percentage of masked pixels: {masked_pixels_percentage}"],
+            key="Masked images" + self.key,
+            images=list(samples),
+            caption=[
+                f"Masking: {masked_pixels_percentage:.2f}% "
+                f"\n KL-divergence: {kl_div:.4f} "
+                f"\n Class: {pl_module.model.config.id2label[label]} "
+                f"\n Predicted Class: {pl_module.model.config.id2label[pred_class.item()]}"
+                for masked_pixels_percentage, kl_div, label, pred_class in
+                zip(masked_pixels_percentages, kl_divs, self.labels, pred_classes)],
         )
 
     def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:

@@ -172,16 +172,16 @@ class ImageInterpretationNet(pl.LightningModule):
             else layer_pred,  # if attribution, we get all the hidden states
         )
 
-        if attribution:
-            return expected_L0_full
-        else:
-            new_hidden_states = (
-                [None] * layer_drop
-                + [new_hidden_state]
-                + [None] * (n_hidden - layer_drop - 1)
-            )
+        # if attribution:
+        #     return expected_L0_full
+        # else:
+        new_hidden_states = (
+            [None] * layer_drop
+            + [new_hidden_state]
+            + [None] * (n_hidden - layer_drop - 1)
+        )
 
-            logits, _ = vit_setter(self.model, x, new_hidden_states)
+        logits, _ = vit_setter(self.model, x, new_hidden_states)
 
         return (
             logits,
@@ -332,22 +332,28 @@ class ImageInterpretationNet(pl.LightningModule):
         ]
         return optimizers, schedulers
 
-    def get_mask(self, x: Tensor) -> Tensor:
-        # TODO: change with forward_explainer
-        # Forward input through freezed ViT & collect hidden states
-        _, hidden_states = vit_getter(self.model, x)
+    def get_mask(self, x: Tensor) -> dict:
 
-        # Add [CLS] token to deal with shape mismatch in self.gate() call
-        patch_embeddings = hidden_states[0]
-        batch_size = len(patch_embeddings)
+        # Pass from forward explainer with attribution=True
+        (
+            logits,
+            logits_orig,
+            gates,
+            expected_L0,
+            gates_full,
+            expected_L0_full,
+            layer_drop,
+            layer_pred,
+        ) = self.forward_explainer(x, attribution=True)
 
-        cls_tokens = self.model.vit.embeddings.cls_token.expand(batch_size, -1, -1)
-        hidden_states[0] = torch.cat((cls_tokens, patch_embeddings), dim=1)
-
-        # Forward hidden states through DiffMask
-        _, _, expected_L0, _, _ = self.gate(
-            hidden_states=hidden_states, layer_pred=None
+        # Calculate KL-divergence
+        kl_div = torch.distributions.kl_divergence(
+            torch.distributions.Categorical(logits=logits_orig),
+            torch.distributions.Categorical(logits=logits),
         )
+
+        # Get predicted class
+        pred_class = logits.argmax(-1)
 
         # Calculate mask
         mask = expected_L0.exp()
@@ -364,7 +370,7 @@ class ImageInterpretationNet(pl.LightningModule):
         mask = F.interpolate(mask, scale_factor=S)
         mask = mask.reshape(B, H, W)
 
-        return mask
+        return {'mask': mask, 'kl_div': kl_div, 'pred_class': pred_class}
 
     def optimizer_step(
         self,
