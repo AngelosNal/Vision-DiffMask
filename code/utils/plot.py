@@ -1,10 +1,14 @@
 import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
 
+from math import sqrt
 from pytorch_lightning import LightningModule
 from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.trainer import Trainer
+from pytorch_grad_cam import GradCAM
 from torch import Tensor
 
 
@@ -98,6 +102,145 @@ def draw_heatmap_on_image(
     return torch.tensor(masked_image).permute(2, 0, 1).to(original_device)
 
 
+def attention_rollout(images, vit, discard_ratio=0.9, head_fusion='mean'):
+    # Forward pass and save attention maps
+    attentions = vit(images, output_attentions=True).attentions
+    
+    B, _, H, W = images.shape   # Batch size, channels, height, width
+    P = attentions[0].size(-1)  # Number of patches
+    
+    mask = torch.eye(P)
+    with torch.no_grad():
+        # iterate over layers
+        for j, attention in enumerate(attentions):
+            if head_fusion == "mean":
+                attention_heads_fused = attention.mean(axis=1)
+            elif head_fusion == "max":
+                attention_heads_fused = attention.max(axis=1)[0]
+            elif head_fusion == "min":
+                attention_heads_fused = attention.min(axis=1)[0]
+            else:
+                raise "Attention head fusion type Not supported"
+
+            # Drop the lowest attentions, but
+            # don't drop the class token
+            flat = attention_heads_fused.view(B, -1)
+            _, indices = flat.topk(int(flat.size(-1)*discard_ratio), -1, False)
+            indices = indices[indices != 0]
+            flat[0, indices] = 0
+
+            #I = torch.eye(P)
+            a = (attention_heads_fused + torch.eye(P)) / 2
+            a = a / a.sum(dim=-1).view(-1, P, 1)
+            
+            mask = a @ mask
+                
+    # Look at the total attention between the class token,
+    # and the image patches
+    mask = mask[:, 0 , 1:]
+    mask = mask / torch.max(mask)
+
+    N = int(sqrt(P))
+    S = int(H / N)
+
+    mask = mask.reshape(B, 1, N, N)
+    mask = F.interpolate(mask, scale_factor=S)
+    mask = mask.reshape(B, H, W)
+    
+    return mask
+
+
+def gradcam(images, vit):
+    def reshape_transform(tensor, height=14, width=14):
+        result = tensor[:, 1:, :].reshape(
+            tensor.size(0),
+            height,
+            width,
+            tensor.size(2)
+        )
+
+        # Bring the channels to the first dimension,
+        result = result.transpose(2, 3).transpose(1, 2)
+        
+        return result
+
+    vit.eval()
+
+    # Create GradCAM object
+    cam = GradCAM(
+        model=vit,
+        target_layers=[vit.vit.encoder.layer[-1].layernorm_before],
+        use_cuda=False,
+        reshape_transform=reshape_transform
+    )
+
+    # Compute GradCAM masks
+    grayscale_cam = cam(
+        input_tensor=images,
+        targets=None,
+        eigen_smooth=True,
+        aug_smooth=True
+    )
+
+    return torch.from_numpy(grayscale_cam)
+
+
+def log_masks(sample_images: Tensor, masks: Tensor, key: str, logger: WandbLogger) -> None:
+    num_channels = sample_images[0].shape[0]
+
+    # Smoothen masks
+    masks = [smoothen(m) for m in masks]
+
+    # Draw mask on sample images
+    if num_channels == 1:
+        sample_images = [
+            image for image in unnormalize(sample_images, mean=(0.5,), std=(0.5,))
+        ]
+    else:
+        sample_images = [image for image in unnormalize(sample_images)]
+
+    # Check if there are 1 or 3 channels in the image
+    if num_channels == 1:
+        sample_images = [
+            torch.repeat_interleave(sample_image, 3, 0)
+            for sample_image in sample_images
+        ]
+
+    sample_images_with_mask = [
+        draw_mask_on_image(image, mask) for image, mask in zip(sample_images, masks)
+    ]
+
+    sample_images_with_heatmap = [
+        draw_heatmap_on_image(image, mask) for image, mask in zip(sample_images, masks)
+    ]
+
+    # Chunk to triplets (image, masked image, heatmap)
+    samples = torch.cat(
+        [
+            torch.cat(sample_images, dim=2),
+            torch.cat(sample_images_with_mask, dim=2),
+            torch.cat(sample_images_with_heatmap, dim=2),
+        ],
+        dim=1,
+    ).chunk(len(sample_images), dim=-1)
+
+    # Compute masking percentage
+    masked_pixels_percentages = [
+        100 * (1 - torch.stack(masks)[i].mean(-1).mean(-1).item())
+        for i in range(len(masks))
+    ]
+    
+    # Log with wandb
+    logger.log_image(
+        key=key,
+        images=list(samples),
+        caption=[
+            f"Masking: {masked_pixels_percentage:.2f}% "
+            for masked_pixels_percentage in masked_pixels_percentages
+        ],
+    )
+
+
 class DrawMaskCallback(Callback):
     def __init__(
         self,
@@ -152,28 +295,34 @@ class DrawMaskCallback(Callback):
         ]
 
         # Chunk to triplets (image, masked image, heatmap)
-        samples = torch.cat([
-            torch.cat(sample_images, dim=2),
-            torch.cat(sample_images_with_mask, dim=2),
-            torch.cat(sample_images_with_heatmap, dim=2),
-        ], dim=1).chunk(len(sample_images), dim=-1)
-
+        samples = torch.cat(
+            [
+                torch.cat(sample_images, dim=2),
+                torch.cat(sample_images_with_mask, dim=2),
+                torch.cat(sample_images_with_heatmap, dim=2),
+            ],
+            dim=1,
+        ).chunk(len(sample_images), dim=-1)
 
         # Compute masking percentage
-        masked_pixels_percentages = [100 * (1 - torch.stack(masks)[i].mean(-1).mean(-1).item()) for i in
-                                     range(len(masks))]
+        masked_pixels_percentages = [
+            100 * (1 - torch.stack(masks)[i].mean(-1).mean(-1).item())
+            for i in range(len(masks))
+        ]
 
         # Log with wandb
         trainer.logger.log_image(
-            key="Masked images" + self.key,
+            key="DiffMask " + self.key,
             images=list(samples),
             caption=[
                 f"Masking: {masked_pixels_percentage:.2f}% "
                 f"\n KL-divergence: {kl_div:.4f} "
                 f"\n Class: {pl_module.model.config.id2label[label]} "
                 f"\n Predicted Class: {pl_module.model.config.id2label[pred_class.item()]}"
-                for masked_pixels_percentage, kl_div, label, pred_class in
-                zip(masked_pixels_percentages, kl_divs, self.labels, pred_classes)],
+                for masked_pixels_percentage, kl_div, label, pred_class in zip(
+                    masked_pixels_percentages, kl_divs, self.labels, pred_classes
+                )
+            ],
         )
 
     def on_fit_start(self, trainer: Trainer, pl_module: LightningModule) -> None:

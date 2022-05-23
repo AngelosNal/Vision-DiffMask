@@ -1,3 +1,4 @@
+from gc import callbacks
 from datamodules import CIFAR10QADataModule, ImageDataModule
 from datamodules.utils import datamodule_factory
 from functools import partial
@@ -6,7 +7,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from transformers import ViTForImageClassification
 from typing import Generator
-from utils.plot import DrawMaskCallback
+from utils.plot import attention_rollout, DrawMaskCallback, gradcam, log_masks
 
 import argparse
 import pytorch_lightning as pl
@@ -53,7 +54,44 @@ def sample_images_generator(
     for x, y in iter(dm.val_dataloader()):
         # Only yield as many images as requested
         yield x[:n_images], y[:n_images]
-
+        
+        
+def setup_sample_image_logs(
+    dm: ImageDataModule,
+    pretrained: str,
+    logger: WandbLogger,
+    n_panels: int = 2, #TODO: change
+    images_per_panel: int = 8,
+):
+    # Sample images
+    sample_images = [None] * n_panels
+    for panel in range(n_panels):
+        sample_images[panel] = next(iter(dm.val_dataloader()))
+        sample_images[panel] = sample_images[panel][0][:images_per_panel], sample_images[panel][1][:images_per_panel]
+        
+    # Define mask callback
+    mask_cb = partial(
+        DrawMaskCallback,
+        log_every_n_steps=args.log_every_n_steps,
+    )
+    
+    callbacks = []
+    for panel in range(n_panels):
+        vit = ViTForImageClassification.from_pretrained(pretrained)
+        
+        # Log GradCAM
+        gradcam_masks = gradcam(sample_images[panel][0], vit)
+        log_masks(sample_images[panel][0], gradcam_masks, f"GradCAM {panel}", logger)
+        
+        # Log Attention Rollout
+        rollout_masks = attention_rollout(sample_images[panel][0], vit)
+        log_masks(sample_images[panel][0], rollout_masks, f"Attention Rollout {panel}", logger)
+        
+        # Create mask callback
+        callbacks += [mask_cb(sample_images[panel], key=f"{panel}")]
+        
+    return callbacks
+    
 
 def main(args: argparse.Namespace):
     # Seed
@@ -98,19 +136,12 @@ def main(args: argparse.Namespace):
     )
 
     # Sample images & create mask callback
-    sample_images = sample_images_generator(dm)
-    mask_cb = partial(
-        DrawMaskCallback,
-        log_every_n_steps=args.log_every_n_steps,
-    )
-    mask_cb1 = mask_cb(next(sample_images), key="1")
-    mask_cb2 = mask_cb(next(sample_images), key="2")
-    mask_cb3 = mask_cb(next(sample_images), key="3")
+    mask_cbs = setup_sample_image_logs(dm, args.from_pretrained, wandb_logger)
 
     # Create trainer
     trainer = pl.Trainer(
         accelerator="auto",
-        callbacks=[ckpt_cb, mask_cb1, mask_cb2, mask_cb3],
+        callbacks=[ckpt_cb, *mask_cbs],
         enable_progress_bar=args.enable_progress_bar,
         logger=wandb_logger,
         max_epochs=args.num_epochs,
