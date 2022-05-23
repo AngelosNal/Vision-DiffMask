@@ -89,7 +89,7 @@ def main(args: argparse.Namespace):
 
     # Create checkpoint callback
     ckpt_cb = ModelCheckpoint(
-        # TODO: add more args (probably monitor some metric)
+        save_top_k=-1,
         dirpath=f"checkpoints/{wandb_logger.version}",
         every_n_train_steps=args.log_every_n_steps,
     )
