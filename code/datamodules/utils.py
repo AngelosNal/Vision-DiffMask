@@ -22,7 +22,9 @@ def get_configs(args: Namespace) -> tuple[dict, dict]:
         model_cfg_args = {
             "image_size": 224,
             "num_channels": 3,
-            "num_labels": 5 if args.dataset == "CIFAR10_QA" else 10,
+            "num_labels": (args.grid_size**2) + 1
+            if args.dataset == "CIFAR10_QA"
+            else 10,
         }
         fe_cfg_args = {
             "image_mean": [0.5, 0.5, 0.5],
@@ -30,23 +32,9 @@ def get_configs(args: Namespace) -> tuple[dict, dict]:
         }
     elif args.dataset == "toy":
         model_cfg_args = {
-            "image_size": 32,
+            "image_size": args.grid_size * 16,
             "num_channels": 3,
-            "num_labels": 5,
-            "id2label": {
-                "0": "0 instances",
-                "1": "1 instance",
-                "2": "2 instances",
-                "3": "3 instances",
-                "4": "4 instances",
-            },
-            "label2id": {
-                "0 instances": 0,
-                "1 instance": 1,
-                "2 instances": 2,
-                "3 instances": 3,
-                "4 instances": 4,
-            },
+            "num_labels": (args.grid_size**2) + 1,
         }
         fe_cfg_args = {
             "image_mean": [0.5, 0.5, 0.5],
@@ -93,12 +81,15 @@ def datamodule_factory(args: Namespace) -> ImageDataModule:
             dm_class = CIFAR10DataModule
         elif args.dataset == "CIFAR10_QA":
             dm_cfg["class_idx"] = args.class_idx
+            dm_cfg["grid_size"] = args.grid_size
             dm_class = CIFAR10QADataModule
         else:
             raise Exception(f"Unknown CIFAR10 variant: {args.dataset}")
     elif args.dataset == "MNIST":
         dm_class = MNISTDataModule
     elif args.dataset == "toy":
+        dm_cfg["class_idx"] = args.class_idx
+        dm_cfg["grid_size"] = args.grid_size
         dm_class = ToyQADataModule
     else:
         raise Exception(f"Unknown dataset: {args.dataset}")

@@ -16,19 +16,25 @@ import torch
 class CIFAR10QADataModule(CIFAR10DataModule):
     @staticmethod
     def add_model_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
-        parser = parent_parser.add_argument_group("CIFAR10 QA")
+        parser = parent_parser.add_argument_group("Visual QA")
         parser.add_argument(
             "--class_idx",
             type=int,
             default=3,
-            choices=list(range(10)),
             help="The class (index) to count.",
+        )
+        parser.add_argument(
+            "--grid_size",
+            type=int,
+            default=3,
+            help="The number of images per row in the grid.",
         )
         return parent_parser
 
     def __init__(
         self,
         class_idx: int,
+        grid_size: int = 3,
         data_dir: str = "data/",
         batch_size: int = 32,
         feature_extractor: FeatureExtractionMixin = None,
@@ -39,7 +45,7 @@ class CIFAR10QADataModule(CIFAR10DataModule):
     ):
         super().__init__(
             data_dir,
-            4 * batch_size,
+            (grid_size**2) * batch_size,
             feature_extractor,
             add_noise,
             add_rotation,
@@ -48,6 +54,7 @@ class CIFAR10QADataModule(CIFAR10DataModule):
         )
 
         self.class_idx = class_idx
+        self.grid_size = grid_size
 
         self.post_transform = self.transform
         self.transform = transforms.PILToTensor()
@@ -56,24 +63,35 @@ class CIFAR10QADataModule(CIFAR10DataModule):
         self.shuffled_sampler = partial(
             FairGridSampler,
             class_idx=class_idx,
+            grid_size=grid_size,
             shuffle=True,
         )
         self.sequential_sampler = partial(
             FairGridSampler,
             class_idx=class_idx,
+            grid_size=grid_size,
             shuffle=False,
         )
 
     def custom_collate_fn(self, batch):
         idx = range(len(batch))
-        grids = zip(*(iter(idx),) * 4)
+        grids = zip(*(iter(idx),) * (self.grid_size**2))
 
         new_batch = []
         for grid in grids:
-            row1 = torch.hstack([batch[i][0] for i in grid[:2]])
-            row2 = torch.hstack([batch[i][0] for i in grid[2:]])
-            img = self.post_transform(torch.dstack([row1, row2]))
-            target = [batch[i][1] for i in grid].count(self.class_idx)
+            img = torch.hstack(
+                [
+                    torch.dstack(
+                        [batch[i][0] for i in grid[idx : idx + self.grid_size]]
+                    )
+                    for idx in range(
+                        0, self.grid_size**2 - self.grid_size + 1, self.grid_size
+                    )
+                ]
+            )
+            img = self.post_transform(img)
+            targets = [batch[i][1] for i in grid]
+            target = targets.count(self.class_idx)
             new_batch += [(img, target)]
 
         return default_collate(new_batch)
@@ -122,12 +140,13 @@ class FairGridSampler(Sampler[int]):
         self,
         dataset: VisionDataset,
         class_idx: int,
+        grid_size: int,
         shuffle: bool = False,
-        grid_size: int = 4,
     ):
         super().__init__(dataset)
         self.dataset = dataset
         self.grid_size = grid_size
+        self.n_images = grid_size**2
 
         self.class_indices = LongTensor(
             [i for i, x in enumerate(dataset) if x[1] == class_idx]
@@ -147,8 +166,8 @@ class FairGridSampler(Sampler[int]):
         gen = torch.Generator()
         gen.manual_seed(seed)
 
-        for _ in range(len(self.dataset) // self.grid_size):
-            n_samples = torch.randint(self.grid_size + 1, (), generator=gen).item()
+        for _ in range(len(self.dataset) // self.n_images):
+            n_samples = torch.randint(self.n_images + 1, (), generator=gen).item()
 
             idx_from_class = torch.randperm(
                 len(self.class_indices),
@@ -158,7 +177,7 @@ class FairGridSampler(Sampler[int]):
             idx_from_other = torch.randperm(
                 len(self.other_indices),
                 generator=gen,
-            )[: self.grid_size - n_samples]
+            )[: self.n_images - n_samples]
 
             grid = (
                 self.class_indices[idx_from_class].tolist()
