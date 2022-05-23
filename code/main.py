@@ -22,15 +22,17 @@ def get_experiment_name(args: argparse.Namespace):
         "add_blur",
         "add_noise",
         "add_rotation",
+        "base_model",
         "batch_size",
+        "class_idx",
         "data_dir",
         "enable_progress_bar",
+        "from_pretrained",
         "log_every_n_steps",
         "num_epochs",
         "num_workers",
         "sample_images",
         "seed",
-        "vit_model",
     ]
 
     # Create experiment name from experiment arguments
@@ -176,7 +178,7 @@ if __name__ == "__main__":
         "--dataset",
         type=str,
         default="CIFAR10",
-        choices=["MNIST", "CIFAR10", "CIFAR10_QA"],
+        choices=["MNIST", "CIFAR10", "CIFAR10_QA", "toy"],
         help="The dataset to use.",
     )
 

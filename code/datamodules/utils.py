@@ -1,5 +1,5 @@
 from .image_classification import CIFAR10DataModule, ImageDataModule, MNISTDataModule
-from .visual_qa import CIFAR10QADataModule
+from .visual_qa import CIFAR10QADataModule, ToyQADataModule
 from argparse import Namespace
 from transformers import ConvNextFeatureExtractor, ViTFeatureExtractor
 
@@ -23,6 +23,30 @@ def get_configs(args: Namespace) -> tuple[dict, dict]:
             "image_size": 224,
             "num_channels": 3,
             "num_labels": 5 if args.dataset == "CIFAR10_QA" else 10,
+        }
+        fe_cfg_args = {
+            "image_mean": [0.5, 0.5, 0.5],
+            "image_std": [0.5, 0.5, 0.5],
+        }
+    elif args.dataset == "toy":
+        model_cfg_args = {
+            "image_size": 32,
+            "num_channels": 3,
+            "num_labels": 5,
+            "id2label": {
+                "0": "0 instances",
+                "1": "1 instance",
+                "2": "2 instances",
+                "3": "3 instances",
+                "4": "4 instances",
+            },
+            "label2id": {
+                "0 instances": 0,
+                "1 instance": 1,
+                "2 instances": 2,
+                "3 instances": 3,
+                "4 instances": 4,
+            },
         }
         fe_cfg_args = {
             "image_mean": [0.5, 0.5, 0.5],
@@ -74,6 +98,8 @@ def datamodule_factory(args: Namespace) -> ImageDataModule:
             raise Exception(f"Unknown CIFAR10 variant: {args.dataset}")
     elif args.dataset == "MNIST":
         dm_class = MNISTDataModule
+    elif args.dataset == "toy":
+        dm_class = ToyQADataModule
     else:
         raise Exception(f"Unknown dataset: {args.dataset}")
 

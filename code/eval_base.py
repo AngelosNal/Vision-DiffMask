@@ -79,7 +79,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--from_pretrained",
         type=str,
-        default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
+        # default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
         help="The name of the pretrained HF model to fine-tune from.",
     )
 
@@ -89,8 +89,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        default="CIFAR10_QA",
-        choices=["MNIST", "CIFAR10", "CIFAR10_QA"],
+        default="toy",
+        choices=["MNIST", "CIFAR10", "CIFAR10_QA", "toy"],
         help="The dataset to use.",
     )
 

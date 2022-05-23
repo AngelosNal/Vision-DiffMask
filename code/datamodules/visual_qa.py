@@ -2,12 +2,13 @@ from .image_classification import CIFAR10DataModule
 from argparse import ArgumentParser
 from functools import partial
 from torch import LongTensor
-from torch.utils.data import default_collate, Sampler
+from torch.utils.data import default_collate, random_split, Sampler
 from torchvision import transforms
 from torchvision.datasets import VisionDataset
 from transformers import FeatureExtractionMixin
-from typing import Iterator
+from typing import Iterator, Optional
 
+import itertools
 import random
 import torch
 
@@ -76,6 +77,44 @@ class CIFAR10QADataModule(CIFAR10DataModule):
             new_batch += [(img, target)]
 
         return default_collate(new_batch)
+
+
+class ToyQADataModule(CIFAR10QADataModule):
+    def prepare_data(self):
+        pass
+
+    def setup(self, stage: Optional[str] = None):
+        img_size = 16
+
+        samples = []
+        for r, g, b in itertools.product((0, 1), (0, 1), (0, 1)):
+            if r == g == b:
+                continue
+
+            for _ in range(1000):
+                patch = torch.vstack(
+                    [
+                        r * torch.ones(1, img_size, img_size),
+                        g * torch.ones(1, img_size, img_size),
+                        b * torch.ones(1, img_size, img_size),
+                    ]
+                )
+
+                target = int(f"{r}{g}{b}", 2) - 1
+
+                samples += [(patch, target)]
+
+        train_size = int(len(samples) * 0.9)
+        val_size = (len(samples) - train_size) // 2
+        test_size = len(samples) - train_size - val_size
+        self.train_data, self.val_data, self.test_data = random_split(
+            samples,
+            [
+                train_size,
+                val_size,
+                test_size,
+            ],
+        )
 
 
 class FairGridSampler(Sampler[int]):
