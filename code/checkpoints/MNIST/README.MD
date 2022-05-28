@@ -1,1 +1,0 @@
-### Download the pretrained model checkpoint or place your MNIST fine-tuned checkpoint in this directory

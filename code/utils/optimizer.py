@@ -1,8 +1,6 @@
 """
-Lookahead Optimizer implementation.
-
-* modifed from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/optim/lookahead.py
-* paper: https://arxiv.org/abs/1907.08610
+File copied from
+https://github.com/nicola-decao/diffmask/blob/master/diffmask/optim/lookahead.py
 """
 
 import torch
@@ -11,13 +9,15 @@ import torch.optim as optim
 from collections import defaultdict
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
-from typing import Callable, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Union
 
 
 _params_type = Union[Iterable[Tensor], Iterable[dict]]
 
 
 class Lookahead(Optimizer):
+    """Lookahead optimizer: https://arxiv.org/abs/1907.08610"""
+
     # noinspection PyMissingConstructor
     def __init__(self, base_optimizer: Optimizer, alpha: float = 0.5, k: int = 6):
         if not 0.0 <= alpha <= 1.0:
@@ -51,7 +51,7 @@ class Lookahead(Optimizer):
         for group in self.param_groups:
             self.update_slow(group)
 
-    def step(self, closure: Optional[Callable[[], float]] = None) -> Optional[float]:
+    def step(self, closure: Optional[callable] = None) -> Optional[float]:
         # print(self.k)
         # assert id(self.param_groups) == id(self.base_optimizer.param_groups)
         loss = self.base_optimizer.step(closure)
@@ -109,7 +109,7 @@ class Lookahead(Optimizer):
 def LookaheadAdam(
     params: _params_type,
     lr: float = 1e-3,
-    betas: Tuple[float, float] = (0.9, 0.999),
+    betas: tuple[float, float] = (0.9, 0.999),
     eps: float = 1e-08,
     weight_decay: float = 0,
     amsgrad: bool = False,
@@ -124,7 +124,7 @@ def LookaheadAdam(
 def LookaheadRAdam(
     params: _params_type,
     lr: float = 1e-3,
-    betas: Tuple[float, float] = (0.9, 0.999),
+    betas: tuple[float, float] = (0.9, 0.999),
     eps: float = 1e-8,
     weight_decay: float = 0,
     lalpha: float = 0.5,

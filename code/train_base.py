@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 
 from datamodules import CIFAR10QADataModule, ImageDataModule
 from datamodules.utils import datamodule_factory
-from models.classification import ImageClassificationNet
+from models import ImageClassificationNet
 from models.utils import model_factory
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
@@ -22,8 +22,10 @@ def main(args: argparse.Namespace):
     dm.setup("fit")
 
     if args.checkpoint:
+        # Load the model from the specified checkpoint
         model = ImageClassificationNet.load_from_checkpoint(args.checkpoint, model=base)
     else:
+        # Create a new instance of the classification model
         model = ImageClassificationNet(
             model=base,
             num_train_steps=args.num_epochs * len(dm.train_dataloader()),
@@ -43,7 +45,7 @@ def main(args: argparse.Namespace):
     # Create early stopping callback
     es_cb = EarlyStopping(monitor="val_acc", mode="max", patience=5)
 
-    # Train
+    # Create trainer
     trainer = pl.Trainer(
         accelerator="auto",
         callbacks=[ckpt_cb, es_cb],
@@ -54,8 +56,10 @@ def main(args: argparse.Namespace):
 
     trainer_args = {}
     if args.checkpoint:
+        # Resume trainer from checkpoint
         trainer_args["ckpt_path"] = args.checkpoint
 
+    # Train the model
     trainer.fit(model, dm, **trainer_args)
 
 

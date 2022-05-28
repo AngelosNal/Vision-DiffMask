@@ -5,6 +5,8 @@ from typing import Optional
 
 
 class MNISTDataModule(ImageDataModule):
+    """Datamodule for the MNIST dataset."""
+
     def prepare_data(self):
         # Download MNIST
         MNIST(self.data_dir, train=True, download=True)
@@ -22,6 +24,8 @@ class MNISTDataModule(ImageDataModule):
 
 
 class CIFAR10DataModule(ImageDataModule):
+    """Datamodule for the CIFAR10 dataset."""
+
     def prepare_data(self):
         # Download CIFAR10
         CIFAR10(self.data_dir, train=True, download=True)

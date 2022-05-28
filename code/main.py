@@ -1,7 +1,7 @@
 from datamodules import CIFAR10QADataModule, ImageDataModule
 from datamodules.utils import datamodule_factory
 from functools import partial
-from models.interpretation import ImageInterpretationNet
+from models import ImageInterpretationNet
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from transformers import ViTForImageClassification
@@ -14,6 +14,7 @@ import torch
 
 
 def get_experiment_name(args: argparse.Namespace):
+    """Create a name for the experiment based on the command line arguments."""
     # Convert to dictionary
     args = vars(args)
 
@@ -48,7 +49,9 @@ def get_experiment_name(args: argparse.Namespace):
 def sample_images_generator(
     dm: ImageDataModule, n_images: int = 8
 ) -> Generator[torch.Tensor, torch.Tensor, None]:
+    """Get a generator that iterates through elements from the validation dataset."""
     for x, y in iter(dm.val_dataloader()):
+        # Only yield as many images as requested
         yield x[:n_images], y[:n_images]
 
 
@@ -104,7 +107,7 @@ def main(args: argparse.Namespace):
     mask_cb2 = mask_cb(next(sample_images), key="2")
     mask_cb3 = mask_cb(next(sample_images), key="3")
 
-    # Train
+    # Create trainer
     trainer = pl.Trainer(
         accelerator="auto",
         callbacks=[ckpt_cb, mask_cb1, mask_cb2, mask_cb3],
@@ -113,6 +116,7 @@ def main(args: argparse.Namespace):
         max_epochs=args.num_epochs,
     )
 
+    # Train the model
     trainer.fit(diffmask, dm)
 
 
@@ -163,7 +167,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--from_pretrained",
         type=str,
-        required=True,
         default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
         help="The name of the pretrained HF model to load.",
     )

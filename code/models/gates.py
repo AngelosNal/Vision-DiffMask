@@ -1,14 +1,13 @@
 """
-Mask prediction models.
-
-* modified from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/models/gates.py
+Parts of this file have been adapted from
+https://github.com/nicola-decao/diffmask/blob/master/diffmask/models/gates.py
 """
 
 import torch
 import torch.nn as nn
 
 from torch import Tensor
-from typing import Optional, Tuple
+from typing import Optional
 from utils.distributions import RectifiedStreched, BinaryConcrete
 
 
@@ -19,12 +18,12 @@ class MLPGate(nn.Module):
         Linear(input_size, hidden_size), Tanh(), Linear(hidden_size, 1)
         The bias of the last layer is set to 5.0 to start with high probability
         of keeping states (fundamental for good convergence as the initialized
-        DIFFMASK has not learned what to mask yet).
+        DiffMask has not learned what to mask yet).
 
         Args:
-            input_size: The number of input features.
-            hidden_size: The number of hidden units.
-            bias: Whether to use a bias.
+            input_size (int): the number of input features
+            hidden_size (int): the number of hidden units
+            bias (bool): whether to use a bias term
         """
         super().__init__()
 
@@ -55,14 +54,15 @@ class MLPMaxGate(nn.Module):
         Linear(input_size, hidden_size), Tanh(), Linear(hidden_size, 1)
         The bias of the last layer is set to 5.0 to start with high probability
         of keeping states (fundamental for good convergence as the initialized
-        DIFFMASK has not learned what to mask yet).
+        DiffMask has not learned what to mask yet).
         It also uses a scaler for the output of the activation function.
 
         Args:
-            input_size: The number of input features.
-            hidden_size: The number of hidden units.
-            max_activation: A scaler for the output of the activation function.
-            bias: Whether to use a bias.
+            input_size (int): the number of input features
+            hidden_size (int): the number of hidden units
+            mul_activation (float): the scaler for the output of the activation function
+            add_activation (float): the offset for the output of the activation function
+            bias (bool): whether to use a bias term
         """
         super().__init__()
 
@@ -93,8 +93,23 @@ class DiffMaskGateInput(nn.Module):
         placeholder: bool = False,
         init_vector: Tensor = None,
     ):
+        """This is a DiffMask module that masks the input of the first layer.
+
+        Args:
+            hidden_size (int): the size of the hidden representations
+            hidden_attention (int) the amount of units in the gate's hidden (bottleneck) layer
+            num_hidden_layers (int): the number of hidden layers (and thus gates to use)
+            max_position_embeddings (int): the amount of placeholder embeddings to learn for the masked positions
+            gate_fn (nn.Module): the PyTorch module to use as a gate
+            mul_activation (float): the scaler for the output of the activation function
+            add_activation (float): the offset for the output of the activation function
+            gate_bias (bool): whether to use a bias term
+            placeholder (bool): whether to use placeholder embeddings or a zero vector
+            init_vector (Tensor): the initial vector to use for the placeholder embeddings
+        """
         super().__init__()
 
+        # Create a ModuleList with the gates
         self.g_hat = nn.ModuleList(
             [
                 gate_fn(
@@ -109,6 +124,7 @@ class DiffMaskGateInput(nn.Module):
         )
 
         if placeholder:
+            # Use a placeholder embedding for the masked positions
             self.placeholder = nn.Parameter(
                 nn.init.xavier_normal_(
                     torch.empty((1, max_position_embeddings, hidden_size))
@@ -119,14 +135,16 @@ class DiffMaskGateInput(nn.Module):
                 )
             )
         else:
+            # Use a zero vector for the masked positions
             self.register_buffer(
                 "placeholder",
                 torch.zeros((1, 1, hidden_size)),
             )
 
     def forward(
-        self, hidden_states: Tuple[Tensor], layer_pred: Optional[int]
-    ) -> Tuple[Tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
+        self, hidden_states: tuple[Tensor], layer_pred: Optional[int]
+    ) -> tuple[tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
+        # Concatenate the output of all the gates
         logits = torch.cat(
             [
                 self.g_hat[i](hidden_states[0], hidden_states[i])
@@ -137,15 +155,20 @@ class DiffMaskGateInput(nn.Module):
             -1,
         )
 
+        # Define a Hard Concrete distribution
         dist = RectifiedStreched(
             BinaryConcrete(torch.full_like(logits, 0.2), logits),
             l=-0.2,
             r=1.0,
         )
 
+        # Calculate the expectation for the full gate probabilities
+        # These act as votes for the masked positions
         gates_full = dist.rsample().cumprod(-1)
         expected_L0_full = dist.log_expected_L0().cumsum(-1)
 
+        # Extract the probabilities from the last layer, which acts
+        # as an aggregation of the votes per position
         gates = gates_full[..., -1]
         expected_L0 = expected_L0_full[..., -1]
 
@@ -160,79 +183,79 @@ class DiffMaskGateInput(nn.Module):
         )
 
 
-class DiffMaskGateHidden(nn.Module):
-    def __init__(
-        self,
-        hidden_size: int,
-        hidden_attention: int,
-        num_hidden_layers: int,
-        max_position_embeddings: int,
-        gate_fn: nn.Module = MLPMaxGate,
-        gate_bias: bool = True,
-        placeholder: bool = False,
-        init_vector: Tensor = None,
-    ):
-        super().__init__()
-
-        self.g_hat = nn.ModuleList(
-            [
-                gate_fn(hidden_size, hidden_attention, bias=gate_bias)
-                for _ in range(num_hidden_layers)
-            ]
-        )
-
-        if placeholder:
-            self.placeholder = nn.ParameterList(
-                [
-                    nn.Parameter(
-                        nn.init.xavier_normal_(
-                            torch.empty((1, max_position_embeddings, hidden_size))
-                        )
-                        if init_vector is None
-                        else init_vector.view(1, 1, hidden_size).repeat(
-                            1, max_position_embeddings, 1
-                        )
-                    )
-                    for _ in range(num_hidden_layers)
-                ]
-            )
-        else:
-            self.register_buffer(
-                "placeholder",
-                torch.zeros((num_hidden_layers, 1, 1, hidden_size)),
-            )
-
-    def forward(
-        self, hidden_states: Tuple[Tensor], layer_pred: Optional[int]
-    ) -> Tuple[Tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
-        if layer_pred is not None:
-            logits = self.g_hat[layer_pred](hidden_states[layer_pred])
-        else:
-            logits = torch.cat(
-                [self.g_hat[i](hidden_states[i]) for i in range(len(hidden_states))], -1
-            )
-
-        dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits),
-            l=-0.2,
-            r=1.0,
-        )
-
-        gates_full = dist.rsample()
-        expected_L0_full = dist.log_expected_L0()
-
-        gates = gates_full if layer_pred is not None else gates_full[..., :1]
-        expected_L0 = (
-            expected_L0_full if layer_pred is not None else expected_L0_full[..., :1]
-        )
-
-        layer_pred = layer_pred or 0  # equiv to "layer_pred if layer_pred else 0"
-        return (
-            hidden_states[layer_pred] * gates
-            + self.placeholder[layer_pred][:, : hidden_states[layer_pred].shape[-2]]
-            * (1 - gates),
-            gates.squeeze(-1),
-            expected_L0.squeeze(-1),
-            gates_full,
-            expected_L0_full,
-        )
+# class DiffMaskGateHidden(nn.Module):
+#     def __init__(
+#         self,
+#         hidden_size: int,
+#         hidden_attention: int,
+#         num_hidden_layers: int,
+#         max_position_embeddings: int,
+#         gate_fn: nn.Module = MLPMaxGate,
+#         gate_bias: bool = True,
+#         placeholder: bool = False,
+#         init_vector: Tensor = None,
+#     ):
+#         super().__init__()
+#
+#         self.g_hat = nn.ModuleList(
+#             [
+#                 gate_fn(hidden_size, hidden_attention, bias=gate_bias)
+#                 for _ in range(num_hidden_layers)
+#             ]
+#         )
+#
+#         if placeholder:
+#             self.placeholder = nn.ParameterList(
+#                 [
+#                     nn.Parameter(
+#                         nn.init.xavier_normal_(
+#                             torch.empty((1, max_position_embeddings, hidden_size))
+#                         )
+#                         if init_vector is None
+#                         else init_vector.view(1, 1, hidden_size).repeat(
+#                             1, max_position_embeddings, 1
+#                         )
+#                     )
+#                     for _ in range(num_hidden_layers)
+#                 ]
+#             )
+#         else:
+#             self.register_buffer(
+#                 "placeholder",
+#                 torch.zeros((num_hidden_layers, 1, 1, hidden_size)),
+#             )
+#
+#     def forward(
+#         self, hidden_states: tuple[Tensor], layer_pred: Optional[int]
+#     ) -> tuple[tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
+#         if layer_pred is not None:
+#             logits = self.g_hat[layer_pred](hidden_states[layer_pred])
+#         else:
+#             logits = torch.cat(
+#                 [self.g_hat[i](hidden_states[i]) for i in range(len(hidden_states))], -1
+#             )
+#
+#         dist = RectifiedStreched(
+#             BinaryConcrete(torch.full_like(logits, 0.2), logits),
+#             l=-0.2,
+#             r=1.0,
+#         )
+#
+#         gates_full = dist.rsample()
+#         expected_L0_full = dist.log_expected_L0()
+#
+#         gates = gates_full if layer_pred is not None else gates_full[..., :1]
+#         expected_L0 = (
+#             expected_L0_full if layer_pred is not None else expected_L0_full[..., :1]
+#         )
+#
+#         layer_pred = layer_pred or 0  # equiv to "layer_pred if layer_pred else 0"
+#         return (
+#             hidden_states[layer_pred] * gates
+#             + self.placeholder[layer_pred][:, : hidden_states[layer_pred].shape[-2]]
+#             * (1 - gates),
+#             gates.squeeze(-1),
+#             expected_L0.squeeze(-1),
+#             gates_full,
+#             expected_L0_full,
+#         )

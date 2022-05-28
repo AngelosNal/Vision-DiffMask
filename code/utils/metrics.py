@@ -1,18 +1,26 @@
 """
-Accuracy metrics for logging.
-
-* copied from: https://github.com/nicola-decao/diffmask/blob/master/diffmask/utils/util.py
+File copied from
+https://github.com/nicola-decao/diffmask/blob/master/diffmask/utils/util.py
 """
 
 import torch
 
 from torch import Tensor
-from typing import Tuple
 
 
 def accuracy_precision_recall_f1(
     y_pred: Tensor, y_true: Tensor, average: bool = True
-) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    """Calculates the accuracy, precision, recall and f1 score given the predicted and true labels.
+
+    Args:
+        y_pred (Tensor): predicted labels
+        y_true (Tensor): true labels
+        average (bool): whether to average the scores or not
+
+    Returns:
+        a tuple of the accuracy, precision, recall and f1 score
+    """
     M = confusion_matrix(y_pred, y_true)
 
     tp = M.diagonal(dim1=-2, dim2=-1).float()
@@ -39,6 +47,7 @@ def accuracy_precision_recall_f1(
 
 
 def confusion_matrix(y_pred: Tensor, y_true: Tensor) -> Tensor:
+    """Creates a confusion matrix given the predicted and true labels."""
     device = y_pred.device
     labels = max(y_pred.max().item() + 1, y_true.max().item() + 1)
 

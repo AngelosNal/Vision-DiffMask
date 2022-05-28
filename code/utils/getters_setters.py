@@ -2,13 +2,22 @@ from torch import Tensor
 from torch.nn import Module
 from torch.utils.hooks import RemovableHandle
 from transformers import ViTForImageClassification
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 
 def _add_hooks(
-    model: ViTForImageClassification, get_hook: Callable
+    model: ViTForImageClassification, get_hook: callable
 ) -> list[RemovableHandle]:
-    handles = (
+    """Adds a list of hooks to the model according to the get_hook function provided.
+
+    Args:
+        model (ViTForImageClassification): the ViT instance to add hooks to
+        get_hook (callable): a function that takes an index and returns a hook
+
+    Returns:
+        a list of RemovableHandle instances
+    """
+    return (
         [model.vit.embeddings.patch_embeddings.register_forward_hook(get_hook(0))]
         + [
             layer.register_forward_pre_hook(get_hook(i + 1))
@@ -21,15 +30,22 @@ def _add_hooks(
         ]
     )
 
-    return handles
-
 
 def vit_getter(
     model: ViTForImageClassification, x: Tensor
 ) -> tuple[Tensor, list[Tensor]]:
+    """A function that returns the logits and hidden states of the model.
+
+    Args:
+        model (ViTForImageClassification): the ViT instance to use for the forward pass
+        x (Tensor): the input to the model
+
+    Returns:
+        a tuple of the model's logits and hidden states
+    """
     hidden_states_ = []
 
-    def get_hook(i: int) -> Callable:
+    def get_hook(i: int) -> callable:
         def hook(_: Module, inputs: tuple, outputs: Optional[tuple] = None):
             if i == 0:
                 hidden_states_.append(outputs)
@@ -53,9 +69,21 @@ def vit_getter(
 def vit_setter(
     model: ViTForImageClassification, x: Tensor, hidden_states: list[Optional[Tensor]]
 ) -> tuple[Tensor, list[Tensor]]:
+    """A function that sets some of the model's hidden states and returns its (new) logits
+     and hidden states after another forward pass.
+
+    Args:
+        model (ViTForImageClassification): the ViT instance to use for the forward pass
+        x (Tensor): the input to the model
+        hidden_states (list[Optional[Tensor]]): a list, with each element corresponding to
+         a hidden state to set or None to calculate anew for that index
+
+    Returns:
+        a tuple of the model's logits and (new) hidden states
+    """
     hidden_states_ = []
 
-    def get_hook(i: int):
+    def get_hook(i: int) -> callable:
         def hook(
             _: Module, inputs: tuple, outputs: Optional[tuple] = None
         ) -> Optional[Union[tuple, Tensor]]:

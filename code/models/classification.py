@@ -1,7 +1,6 @@
 """
-Pytorch Lightning module for Image Classification
-
-* modified from: https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial15/Vision_Transformer.html
+Parts of this file have been adapted from
+https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial15/Vision_Transformer.html
 """
 
 import pytorch_lightning as pl
@@ -12,20 +11,9 @@ from torch import Tensor
 from torch.optim import AdamW, Optimizer, RAdam
 from torch.optim.lr_scheduler import _LRScheduler
 from transformers import get_scheduler, PreTrainedModel
-from typing import List, Tuple
 
 
 class ImageClassificationNet(pl.LightningModule):
-    """HuggingFace model wrapper for image classification.
-
-    Args:
-        model (PreTrainedModel): a pretrained model for image classification
-        num_train_steps (int): number of training steps
-        optimizer (str): optimizer to use
-        weight_decay (float): weight decay for optimizer
-        lr (float): the learning rate used for training
-    """
-
     @staticmethod
     def add_model_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
         parser = parent_parser.add_argument_group("Classification Model")
@@ -58,16 +46,26 @@ class ImageClassificationNet(pl.LightningModule):
         weight_decay: float = 1e-2,
         lr: float = 5e-5,
     ):
+        """A PyTorch Lightning Module for a HuggingFace model used for image classification.
+
+        Args:
+            model (PreTrainedModel): a pretrained model for image classification
+            num_train_steps (int): number of training steps
+            optimizer (str): optimizer to use
+            weight_decay (float): weight decay for optimizer
+            lr (float): the learning rate used for training
+        """
         super().__init__()
 
+        # Save the hyperparameters and the model
         self.save_hyperparameters(ignore=["model"])
-
         self.model = model
 
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
 
-    def configure_optimizers(self) -> Tuple[List[Optimizer], List[_LRScheduler]]:
+    def configure_optimizers(self) -> tuple[list[Optimizer], list[_LRScheduler]]:
+        # Set the optimizer class based on the hyperparameter
         if self.hparams.optimizer == "AdamW":
             optim_class = AdamW
         elif self.hparams.optimizer == "RAdam":
@@ -75,6 +73,7 @@ class ImageClassificationNet(pl.LightningModule):
         else:
             raise Exception(f"Unknown optimizer {self.hparams.optimizer}")
 
+        # Create the optimizer and the learning rate scheduler
         optimizer = optim_class(
             self.parameters(),
             weight_decay=self.hparams.weight_decay,
@@ -89,7 +88,7 @@ class ImageClassificationNet(pl.LightningModule):
 
         return [optimizer], [lr_scheduler]
 
-    def _calculate_loss(self, batch: Tuple[Tensor, Tensor], mode: str) -> Tensor:
+    def _calculate_loss(self, batch: tuple[Tensor, Tensor], mode: str) -> Tensor:
         imgs, labels = batch
 
         preds = self.model(imgs).logits
@@ -101,13 +100,13 @@ class ImageClassificationNet(pl.LightningModule):
 
         return loss
 
-    def training_step(self, batch: Tuple[Tensor, Tensor], _: Tensor) -> Tensor:
+    def training_step(self, batch: tuple[Tensor, Tensor], _: Tensor) -> Tensor:
         loss = self._calculate_loss(batch, mode="train")
 
         return loss
 
-    def validation_step(self, batch: Tuple[Tensor, Tensor], _: Tensor):
+    def validation_step(self, batch: tuple[Tensor, Tensor], _: Tensor):
         self._calculate_loss(batch, mode="val")
 
-    def test_step(self, batch: Tuple[Tensor, Tensor], _: Tensor):
+    def test_step(self, batch: tuple[Tensor, Tensor], _: Tensor):
         self._calculate_loss(batch, mode="test")

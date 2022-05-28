@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from .gates import DiffMaskGateInput
 from argparse import ArgumentParser
 from math import sqrt
-from optimizer import LookaheadAdam
 from pytorch_lightning.core.optimizer import LightningOptimizer
 from torch import Tensor
 from torch.optim import Optimizer
@@ -16,15 +15,16 @@ from transformers import (
     ViTForImageClassification,
 )
 from transformers.models.vit.configuration_vit import ViTConfig
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Optional, Union
 from utils.getters_setters import vit_getter, vit_setter
 from utils.metrics import accuracy_precision_recall_f1
+from utils.optimizer import LookaheadAdam
 
 
 class ImageInterpretationNet(pl.LightningModule):
     @staticmethod
     def add_model_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
-        parser = parent_parser.add_argument_group("Interpretation Model")
+        parser = parent_parser.add_argument_group("VisionDiffMask")
         parser.add_argument(
             "--alpha",
             type=float,
@@ -79,6 +79,9 @@ class ImageInterpretationNet(pl.LightningModule):
         )
         return parent_parser
 
+    # Declare variables that will be initialized later
+    model: ViTForImageClassification
+
     def __init__(
         self,
         model_cfg: ViTConfig,
@@ -94,10 +97,28 @@ class ImageInterpretationNet(pl.LightningModule):
         placeholder: bool = True,
         weighted_layer_pred: bool = False,
     ):
+        """A PyTorch Lightning Module for the VisionDiffMask model on the Vision Transformer.
+
+        Args:
+            model_cfg (ViTConfig): the configuration of the Vision Transformer model
+            alpha (float): the initial value for the Lagrangian
+            lr (float): the learning rate for the DiffMask gates
+            eps (float): the tolerance for the KL divergence
+            eps_valid (float): the tolerance for the KL divergence in the validation step
+            acc_valid (float): the accuracy threshold for the validation step
+            lr_placeholder (float): the learning rate for the learnable masking embeddings
+            lr_alpha (float): the learning rate for the Lagrangian
+            mul_activation (float): the value to multiply the gate activations by
+            add_activation (float): the value to add to the gate activations
+            placeholder (bool): whether to use placeholder embeddings or a zero vector
+            weighted_layer_pred (bool): whether to use a weighted distribution when picking a layer
+        """
         super().__init__()
 
+        # Save the hyperparameters
         self.save_hyperparameters()
 
+        # Create DiffMask instance
         self.gate = DiffMaskGateInput(
             hidden_size=model_cfg.hidden_size,
             hidden_attention=model_cfg.hidden_size // 4,
@@ -108,6 +129,7 @@ class ImageInterpretationNet(pl.LightningModule):
             placeholder=placeholder,
         )
 
+        # Create the Lagrangian values for the dual optimization
         self.alpha = torch.nn.ParameterList(
             [
                 torch.nn.Parameter(torch.ones(()) * alpha)
@@ -115,6 +137,7 @@ class ImageInterpretationNet(pl.LightningModule):
             ]
         )
 
+        # Register buffers for running metrics
         self.register_buffer(
             "running_acc", torch.ones((model_cfg.num_hidden_layers + 2,))
         )
@@ -126,24 +149,31 @@ class ImageInterpretationNet(pl.LightningModule):
         )
 
     def set_vision_transformer(self, model: ViTForImageClassification):
+        """Set the Vision Transformer model to be used with this module."""
+        # Save the model instance as a class attribute
         self.model = model
+        # Freeze the model's parameters
         for param in self.model.parameters():
             param.requires_grad = False
 
     def forward_explainer(
         self, x: Tensor, attribution: bool = False
-    ) -> Union[Tensor, Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, int]]:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, int]:
+        """Performs a forward pass through the explainer (VisionDiffMask) model."""
+        # Get the original logits and hidden states from the model
         logits_orig, hidden_states = vit_getter(self.model, x)
 
         # Add [CLS] token to deal with shape mismatch in self.gate() call
         patch_embeddings = hidden_states[0]
         batch_size = len(patch_embeddings)
-
         cls_tokens = self.model.vit.embeddings.cls_token.expand(batch_size, -1, -1)
         hidden_states[0] = torch.cat((cls_tokens, patch_embeddings), dim=1)
 
+        # Select the layer to generate the mask from in this pass
         n_hidden = len(hidden_states)
         if self.hparams.weighted_layer_pred:
+            # If weighted layer prediction is enabled, use a weighted distribution
+            # instead of uniformly picking a layer after a number of steps
             low_weight = (
                 lambda i: self.running_acc[i] > 0.75
                 and self.running_l0[i] < 0.1
@@ -157,6 +187,7 @@ class ImageInterpretationNet(pl.LightningModule):
         else:
             layer_pred = torch.randint(n_hidden, ()).item()
 
+        # Set the layer to drop to 0, since we are only interested in masking the input
         layer_drop = 0
 
         (
@@ -172,15 +203,14 @@ class ImageInterpretationNet(pl.LightningModule):
             else layer_pred,  # if attribution, we get all the hidden states
         )
 
-        # if attribution:
-        #     return expected_L0_full
-        # else:
+        # Create the list of the new hidden states for the new forward pass
         new_hidden_states = (
             [None] * layer_drop
             + [new_hidden_state]
             + [None] * (n_hidden - layer_drop - 1)
         )
 
+        # Get the new logits from the masked input
         logits, _ = vit_setter(self.model, x, new_hidden_states)
 
         return (
@@ -194,12 +224,54 @@ class ImageInterpretationNet(pl.LightningModule):
             layer_pred,
         )
 
+    def get_mask(self, x: Tensor) -> dict[str, Tensor]:
+        """Get the mask for the given input."""
+        # Pass from forward explainer with attribution=True
+        (
+            logits,
+            logits_orig,
+            gates,
+            expected_L0,
+            gates_full,
+            expected_L0_full,
+            layer_drop,
+            layer_pred,
+        ) = self.forward_explainer(x, attribution=True)
+
+        # Calculate KL-divergence
+        kl_div = torch.distributions.kl_divergence(
+            torch.distributions.Categorical(logits=logits_orig),
+            torch.distributions.Categorical(logits=logits),
+        )
+
+        # Get predicted class
+        pred_class = logits.argmax(-1)
+
+        # Calculate mask
+        mask = expected_L0.exp()
+        mask = mask[:, 1:]
+
+        C, H, W = x.shape[1:]  # channels, height, width
+        B, P = mask.shape  # batch, patches
+        N = int(sqrt(P))  # patches per side
+        S = int(H / N)  # patch size
+
+        # Reshape mask to match input shape
+        mask = mask.reshape(B, 1, N, N)
+        mask = F.interpolate(mask, scale_factor=S)
+        mask = mask.reshape(B, H, W)
+
+        return {"mask": mask, "kl_div": kl_div, "pred_class": pred_class}
+
+    # TODO: is this needed?
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
 
-    def training_step(self, batch: Tuple[Tensor, Tensor], *args, **kwargs) -> dict:
+    def training_step(self, batch: tuple[Tensor, Tensor], *args, **kwargs) -> dict:
+        # Unpack the batch
         x, y = batch
 
+        # Pass the batch through the explainer (VisionDiffMask) model
         (
             logits,
             logits_orig,
@@ -211,6 +283,7 @@ class ImageInterpretationNet(pl.LightningModule):
             layer_pred,
         ) = self.forward_explainer(x)
 
+        # Calculate the KL-divergence loss term
         loss_c = (
             torch.distributions.kl_divergence(
                 torch.distributions.Categorical(logits=logits_orig),
@@ -219,14 +292,18 @@ class ImageInterpretationNet(pl.LightningModule):
             - self.hparams.eps
         )
 
+        # Calculate the L0 loss term
         loss_g = expected_L0.mean(-1)
 
+        # Calculate the full loss term
         loss = self.alpha[layer_pred] * loss_c + loss_g
 
+        # Calculate the accuracy
         acc, _, _, _ = accuracy_precision_recall_f1(
             logits.argmax(-1), logits_orig.argmax(-1), average=True
         )
 
+        # Calculate the average L0 loss
         l0 = expected_L0.exp().mean(-1)
 
         outputs_dict = {
@@ -280,7 +357,7 @@ class ImageInterpretationNet(pl.LightningModule):
 
         return outputs_dict
 
-    def validation_epoch_end(self, outputs: List[dict]):
+    def validation_epoch_end(self, outputs: list[dict]):
         outputs_dict = {
             k: [e[k] for e in outputs if k in e]
             for k in ("val_loss_c", "val_loss_g", "val_acc", "val_l0")
@@ -301,11 +378,14 @@ class ImageInterpretationNet(pl.LightningModule):
 
         return outputs_dict
 
-    def configure_optimizers(self) -> Tuple[List[Optimizer], List[_LRScheduler]]:
+    def configure_optimizers(self) -> tuple[list[Optimizer], list[_LRScheduler]]:
         optimizers = [
             LookaheadAdam(
                 params=[
-                    {"params": self.gate.g_hat.parameters(), "lr": self.hparams.lr},
+                    {
+                        "params": self.gate.g_hat.parameters(),
+                        "lr": self.hparams.lr,
+                    },
                     {
                         "params": self.gate.placeholder.parameters()
                         if isinstance(self.gate.placeholder, torch.nn.ParameterList)
@@ -332,75 +412,41 @@ class ImageInterpretationNet(pl.LightningModule):
         ]
         return optimizers, schedulers
 
-    def get_mask(self, x: Tensor) -> dict:
-
-        # Pass from forward explainer with attribution=True
-        (
-            logits,
-            logits_orig,
-            gates,
-            expected_L0,
-            gates_full,
-            expected_L0_full,
-            layer_drop,
-            layer_pred,
-        ) = self.forward_explainer(x, attribution=True)
-
-        # Calculate KL-divergence
-        kl_div = torch.distributions.kl_divergence(
-            torch.distributions.Categorical(logits=logits_orig),
-            torch.distributions.Categorical(logits=logits),
-        )
-
-        # Get predicted class
-        pred_class = logits.argmax(-1)
-
-        # Calculate mask
-        mask = expected_L0.exp()
-        mask = mask[:, 1:]
-
-        # Reshape mask to match input shape
-        B, C, H, W = x.shape  # batch, channels, height, width
-        B, P = mask.shape  # batch, patches
-
-        N = int(sqrt(P))  # patches per side
-        S = int(H / N)  # patch size
-
-        mask = mask.reshape(B, 1, N, N)
-        mask = F.interpolate(mask, scale_factor=S)
-        mask = mask.reshape(B, H, W)
-
-        return {'mask': mask, 'kl_div': kl_div, 'pred_class': pred_class}
-
     def optimizer_step(
         self,
         epoch: int,
         batch_idx: int,
         optimizer: Union[Optimizer, LightningOptimizer],
         optimizer_idx: int = 0,
-        optimizer_closure: Optional[Callable] = None,
+        optimizer_closure: Optional[callable] = None,
         on_tpu: bool = False,
         using_native_amp: bool = False,
         using_lbfgs: bool = False,
     ):
+        # Optimizer 0: Minimize loss w.r.t. DiffMask's parameters
         if optimizer_idx == 0:
+            # Gradient ascent on the model's parameters
             optimizer.step(closure=optimizer_closure)
             optimizer.zero_grad()
             for g in optimizer.param_groups:
                 for p in g["params"]:
                     p.grad = None
 
+        # Optimizer 1: Maximize loss w.r.t. the Langrangian
         elif optimizer_idx == 1:
+            # Reverse the sign of the Langrangian's gradients
             for i in range(len(self.alpha)):
                 if self.alpha[i].grad:
                     self.alpha[i].grad *= -1
 
+            # Gradient ascent on the Langrangian
             optimizer.step(closure=optimizer_closure)
             optimizer.zero_grad()
             for g in optimizer.param_groups:
                 for p in g["params"]:
                     p.grad = None
 
+            # Clip the Lagrangian's values
             for i in range(len(self.alpha)):
                 self.alpha[i].data = torch.where(
                     self.alpha[i].data < 0,

@@ -1,6 +1,6 @@
 from datamodules import CIFAR10QADataModule, ImageDataModule
 from datamodules.utils import datamodule_factory
-from models.classification import ImageClassificationNet
+from models import ImageClassificationNet
 from models.utils import model_factory
 from pytorch_lightning.loggers import WandbLogger
 
@@ -18,6 +18,7 @@ def main(args: argparse.Namespace):
     # Load datamodule
     dm = datamodule_factory(args)
 
+    # Load the model from the specified checkpoint
     model = ImageClassificationNet.load_from_checkpoint(
         args.checkpoint,
         model=base,
@@ -30,7 +31,7 @@ def main(args: argparse.Namespace):
         project="Patch-DiffMask",
     )
 
-    # Train
+    # Create trainer
     trainer = pl.Trainer(
         accelerator="auto",
         logger=wandb_logger,
@@ -38,8 +39,10 @@ def main(args: argparse.Namespace):
         enable_progress_bar=args.enable_progress_bar,
     )
 
+    # Evaluate the model
     trainer.test(model, dm)
 
+    # Save the HuggingFace model to be used with --from_pretrained
     save_dir = f"checkpoints/{args.base_model}_{args.dataset}"
     model.model.save_pretrained(save_dir)
     dm.feature_extractor.save_pretrained(save_dir)
