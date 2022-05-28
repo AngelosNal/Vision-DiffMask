@@ -24,7 +24,7 @@ from utils.optimizer import LookaheadAdam
 class ImageInterpretationNet(pl.LightningModule):
     @staticmethod
     def add_model_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
-        parser = parent_parser.add_argument_group("VisionDiffMask")
+        parser = parent_parser.add_argument_group("Vision DiffMask")
         parser.add_argument(
             "--alpha",
             type=float,
