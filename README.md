@@ -1,4 +1,4 @@
-# Patch-DiffMask
+# Vision-DiffMask
 
 This repo implements an adaptation of DiffMask **[1]** for vision models, and is heavily inspired by its [official PyTorch implementation](https://github.com/nicola-decao/diffmask)
 
