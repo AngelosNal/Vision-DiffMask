@@ -48,7 +48,10 @@ The project is organized in the following way:
 │       ├── optimizer.py                Optimizers used by Vision DiffMask
 │       └── plot.py                     Functions and callbacks for visualization
 └── experiments                         Notebooks for experiment replication
-    ├── all_methods.ipynb               Comparison of Vision DiffMask with other methods
+    ├── diffmask_visualization.ipynb    Visualization of Vision Diffmask on sample images
+    ├── inference_time.ipynb            Comparison of inference time with other methods
+    ├── kl_divergence.ipynb             Comparison of KL divergence with other methods
+    ├── qualitative_comparison.ipynb    Qualitative comparison with other methods
     └── toy_dataset.ipynb               Faithfulness verification on the toy task
 ```
 
