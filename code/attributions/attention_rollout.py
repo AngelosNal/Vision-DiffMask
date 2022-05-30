@@ -12,6 +12,7 @@ def attention_rollout(
     vit: ViTForImageClassification,
     discard_ratio: float = 0.9,
     head_fusion: str = "mean",
+    device: str = "cpu",
 ) -> Tensor:
     """Performs the Attention Rollout method on a batch of images (https://arxiv.org/pdf/2005.00928.pdf)."""
     # Forward pass and save attention maps
@@ -20,7 +21,7 @@ def attention_rollout(
     B, _, H, W = images.shape  # Batch size, channels, height, width
     P = attentions[0].size(-1)  # Number of patches
 
-    mask = torch.eye(P)
+    mask = torch.eye(P).to(device)
     # Iterate over layers
     for j, attention in enumerate(attentions):
         if head_fusion == "mean":
@@ -39,7 +40,7 @@ def attention_rollout(
         flat[0, indices] = 0
 
         # I = torch.eye(P)
-        a = (attention_heads_fused + torch.eye(P)) / 2
+        a = (attention_heads_fused + torch.eye(P).to(device)) / 2
         a = a / a.sum(dim=-1).view(-1, P, 1)
 
         mask = a @ mask
