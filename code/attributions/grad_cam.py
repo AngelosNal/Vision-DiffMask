@@ -5,7 +5,7 @@ from torch import Tensor
 from transformers import ViTForImageClassification
 
 
-def grad_cam(images: Tensor, vit: ViTForImageClassification, use_cuda: bool) -> Tensor:
+def grad_cam(images: Tensor, vit: ViTForImageClassification, use_cuda: bool = False) -> Tensor:
     """Performs the Grad-CAM method on a batch of images (https://arxiv.org/pdf/1610.02391.pdf)."""
 
     # Wrap the ViT model to be compatible with GradCAM
