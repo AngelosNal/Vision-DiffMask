@@ -56,8 +56,9 @@ def setup_sample_image_logs(
 
     # Sample images
     sample_images = []
+    iter_loader = iter(dm.val_dataloader())
     for panel in range(n_panels):
-        X, Y = next(iter(dm.val_dataloader()))
+        X, Y = next(iter_loader)
         sample_images += [(X[:images_per_panel], Y[:images_per_panel])]
 
     # Define mask callback
