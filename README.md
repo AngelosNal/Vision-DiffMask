@@ -200,6 +200,15 @@ Visual QA:
 ```
 </details>
 
+## Model Checkpoints
+To facilitate the reproducibility of our results, we provide a set of pre-trained checkpoints
+[here](https://archive.org/download/vision-diffmask-ckpts).
+
+For the toy task, we provide both a pre-trained instance of the Vision Transformer, along with
+the trained Vision DiffMask model. For the image classification task on CIFAR-10, we provide the
+trained Vision DiffMask model, as the pre-trained ViT can be found on
+[HuggingFace](https://huggingface.co/tanlq/vit-base-patch16-224-in21k-finetuned-cifar10).
+
 ## Contributing
 This project is licensed under the [MIT license](LICENSE).
 
