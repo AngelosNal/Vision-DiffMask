@@ -50,8 +50,8 @@ The project is organized in the following way:
 └── experiments                         Notebooks for experiment replication
     ├── diffmask_visualization.ipynb    Visualization of Vision Diffmask on sample images
     ├── inference_time.ipynb            Comparison of inference time with other methods
-    ├── kl_divergence.ipynb             Comparison of KL divergence with other methods
     ├── qualitative_comparison.ipynb    Qualitative comparison with other methods
+    ├── quantitative_comparison.ipynb   Quantitative comparison with other methods
     └── toy_dataset.ipynb               Faithfulness verification on the toy task
 ```
 
