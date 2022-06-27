@@ -52,4 +52,4 @@ class ViTWrapper(torch.nn.Module):
 
     @property
     def target_layer(self):
-        return self.vit.vit.encoder.layer[-1].layernorm_before
+        return self.vit.vit.encoder.layer[-2].layernorm_after
