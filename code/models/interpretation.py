@@ -224,8 +224,20 @@ class ImageInterpretationNet(pl.LightningModule):
             layer_pred,
         )
 
-    def get_mask(self, x: Tensor) -> dict[str, Tensor]:
-        """Get the mask for the given input."""
+    def get_mask(self, x: Tensor,
+                 idx: int = -1,
+                 aggregative_mask: bool = True,
+                 ) -> dict[str, Tensor]:
+        """
+        Generates a mask for the given input.
+        Args:
+            x: the input to generate the mask for
+            idx: the index of the layer to generate the mask from
+            aggregative_mask: whether to use an aggregative mask from each layer
+        Returns:
+            a dictionary containing the mask, kl divergence and the predicted class
+        """
+
         # Pass from forward explainer with attribution=True
         (
             logits,
@@ -248,7 +260,11 @@ class ImageInterpretationNet(pl.LightningModule):
         pred_class = logits.argmax(-1)
 
         # Calculate mask
-        mask = expected_L0.exp()
+        if aggregative_mask:
+            mask = expected_L0_full[:, :, idx].exp()
+        else:
+            mask = gates_full[:, :, idx]
+
         mask = mask[:, 1:]
 
         C, H, W = x.shape[1:]  # channels, height, width
@@ -263,7 +279,6 @@ class ImageInterpretationNet(pl.LightningModule):
 
         return {"mask": mask, "kl_div": kl_div, "pred_class": pred_class}
 
-    # TODO: is this needed?
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
 
