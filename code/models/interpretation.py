@@ -157,7 +157,7 @@ class ImageInterpretationNet(pl.LightningModule):
             param.requires_grad = False
 
     def forward_explainer(
-        self, x: Tensor, attribution: bool = False
+        self, x: Tensor, attribution: bool = False, aggregated: bool = True
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, int, int]:
         """Performs a forward pass through the explainer (VisionDiffMask) model."""
         # Get the original logits and hidden states from the model
@@ -201,6 +201,7 @@ class ImageInterpretationNet(pl.LightningModule):
             layer_pred=None
             if attribution
             else layer_pred,  # if attribution, we get all the hidden states
+            aggregated=aggregated,
         )
 
         # Create the list of the new hidden states for the new forward pass
@@ -226,14 +227,14 @@ class ImageInterpretationNet(pl.LightningModule):
 
     def get_mask(self, x: Tensor,
                  idx: int = -1,
-                 aggregated_mask: bool = True,
+                 aggregated: bool = True,
                  ) -> dict[str, Tensor]:
         """
         Generates a mask for the given input.
         Args:
             x: the input to generate the mask for
             idx: the index of the layer to generate the mask from
-            aggregated_mask: whether to use an aggregative mask from each layer
+            aggregated: whether to use an aggregative mask from each layer
         Returns:
             a dictionary containing the mask, kl divergence and the predicted class
         """
@@ -248,7 +249,7 @@ class ImageInterpretationNet(pl.LightningModule):
             expected_L0_full,
             layer_drop,
             layer_pred,
-        ) = self.forward_explainer(x, attribution=True)
+        ) = self.forward_explainer(x, attribution=True, aggregated=aggregated)
 
         # Calculate KL-divergence
         kl_div = torch.distributions.kl_divergence(
@@ -259,12 +260,8 @@ class ImageInterpretationNet(pl.LightningModule):
         # Get predicted class
         pred_class = logits.argmax(-1)
 
-        # Calculate mask
-        if aggregated_mask:
-            mask = expected_L0_full[:, :, idx].exp()
-        else:
-            mask = gates_full[:, :, idx]
-
+        # Get mask
+        mask = expected_L0_full[:, :, idx].exp()
         mask = mask[:, 1:]
 
         C, H, W = x.shape[1:]  # channels, height, width

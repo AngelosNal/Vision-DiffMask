@@ -142,7 +142,7 @@ class DiffMaskGateInput(nn.Module):
             )
 
     def forward(
-        self, hidden_states: tuple[Tensor], layer_pred: Optional[int]
+        self, hidden_states: tuple[Tensor], layer_pred: Optional[int], aggregated: bool = True
     ) -> tuple[tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
         # Concatenate the output of all the gates
         logits = torch.cat(
@@ -165,7 +165,10 @@ class DiffMaskGateInput(nn.Module):
         # Calculate the expectation for the full gate probabilities
         # These act as votes for the masked positions
         gates_full = dist.rsample().cumprod(-1)
-        expected_L0_full = dist.log_expected_L0().cumsum(-1)
+        if aggregated:
+            expected_L0_full = dist.log_expected_L0().cumsum(-1)
+        else:
+            expected_L0_full = dist.log_expected_L0()
 
         # Extract the probabilities from the last layer, which acts
         # as an aggregation of the votes per position
