@@ -108,4 +108,16 @@ x_ticks = np.arange(0, len_x, 3)
 x_ticks_labels = [str(int(x * 100 / len_x)) + "%" for x in x_ticks]
 plt.xticks(x_ticks, x_ticks_labels)
 plt.legend()
-plt.savefig("")
+plt.savefig("quant_imagenet_auc_pos.png")
+
+plt.clf()
+plt.plot(auc_neg_diffmask, label="DiffMask")
+plt.plot(auc_neg_rollout, label="Attention Rollout")
+plt.plot(auc_neg_gradcam, label="Grad-CAM")
+len_x = len(auc_neg_diffmask)
+x_ticks = np.arange(0, len_x, 3)
+x_ticks_labels = [str(int(x * 100 / len_x)) + "%" for x in x_ticks]
+plt.xticks(x_ticks, x_ticks_labels)
+plt.xlabel("Percentage of negative pixels removed", dpi=300)
+plt.legend()
+plt.savefig("quant_imagenet_auc_neg.png", dpi=300)
