@@ -77,6 +77,12 @@ class ImageInterpretationNet(pl.LightningModule):
             action="store_true",
             help="Whether to use a weighted distribution when picking a layer in DiffMask forward.",
         )
+        parser.add_argument(
+            "--diffmask_checkpoint",
+            type=str,
+            default=None,
+            help="Path to a checkpoint to load DiffMask weights from.",
+        )
         return parent_parser
 
     # Declare variables that will be initialized later

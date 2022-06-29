@@ -49,7 +49,7 @@ def setup_sample_image_logs(
     dm: ImageDataModule,
     args: Namespace,
     logger: WandbLogger,
-    n_panels: int = 2,  # TODO: change?
+    n_panels: int = 3,  # TODO: change?
 ):
     """Setup the log callbacks for sampling and plotting images."""
     images_per_panel = args.sample_images
@@ -57,13 +57,14 @@ def setup_sample_image_logs(
     # Sample images
     sample_images = []
     iter_loader = iter(dm.val_dataloader())
+    train_iter_loader = iter(dm.train_loader())
     for panel in range(n_panels):
         X, Y = next(iter_loader)
         sample_images += [(X[:images_per_panel], Y[:images_per_panel])]
 
     # Define mask callback
     mask_cb = partial(DrawMaskCallback, log_every_n_steps=args.log_every_n_steps)
-
+    
     callbacks = []
     for panel in range(n_panels):
         # Initialize ViT model
@@ -83,6 +84,10 @@ def setup_sample_image_logs(
 
         # Create mask callback
         callbacks += [mask_cb(samples, key=f"{panel}")]
+        if panel == 0:
+            X_train, y_train = next(train_iter_loader)
+            samples_train = (X_train[:images_per_panel], y_train[:images_per_panel])
+            callbacks += [mask_cb(samples_train, key=f"train_{panel}")]
 
     return callbacks
 
@@ -114,6 +119,10 @@ def main(args: Namespace):
         placeholder=not args.no_placeholder,
         weighted_layer_pred=args.weighted_layer_distribution,
     )
+    if args.diffmask_checkpoint:
+        diffmask = ImageInterpretationNet.load_from_checkpoint(
+            args.diffmask_checkpoint)
+
     diffmask.set_vision_transformer(model)
 
     # Create wandb logger instance

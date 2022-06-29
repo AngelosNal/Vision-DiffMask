@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+# #SBATCH --partition=gpu_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=Patch-DiffMask
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=6
+#SBATCH --time=48:00:00
+#SBATCH --mem=100000M
+#SBATCH --output=lisa/outputs/patch_diffmask_train_%A.out
+
+module purge
+module load 2021
+module load Anaconda3/2021.05
+
+source activate dl2021
+
+srun python -u code/main.py --from_pretrained google/vit-base-patch16-224 --batch_size 128 --dataset ImageNet --num_epochs 25 --num_workers=6 --eps 0.1 --lr 1e-5 --lr_placeholder 5e-4 --lr_alpha 0.15 --diffmask_checkpoint checkpoints/working/diffmask.ckpt
