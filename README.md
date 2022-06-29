@@ -1,17 +1,12 @@
 # Vision DiffMask: Interpretability of Computer Vision models with Differentiable Patch Masking
 
 ## Overview
-This repository contains *Vision DiffMask*, which is an adaptation of the
-[DiffMask](https://arxiv.org/pdf/2004.14992.pdf) **[1]** algorithm for the
+This repository contains *Vision DiffMask*, a post-hoc interpretation method for vision tasks. It is an adaptation of
+[DiffMask](https://arxiv.org/pdf/2004.14992.pdf) **[1]** for the
 vision domain, and is heavily inspired by [its original PyTorch
 implementation](https://github.com/nicola-decao/diffmask).
 
-DiffMask is an attribution model that has been applied for Transformer and
-RNN architectures in NLP tasks.  In particular, given a pre-trained classifier,
-DiffMask predicts how much each part of the input contributes to the final prediction.
-
-In this implementation, we extend the original idea for Computer Vision tasks.
-Currently, only Vision Transformers (ViT) in the image classification setting are supported.
+Given a pre-trained model, Vision DiffMask predicts the minimal subset of the input required to maintain the original output distribution. Currently, only Vision Transformer (ViT) **[2]** for image classification is supported.
 
 ![Alt text](https://github.com/AngelosNal/Vision-DiffMask/blob/master/vizdiffmask_model.png?raw=true)
 
@@ -216,3 +211,6 @@ This project is licensed under the [MIT license](LICENSE).
 
 ## References
 **[1]** De Cao, N., Schlichtkrull, M. S., Aziz, W., & Titov, I. (2020, November). How do Decisions Emerge across Layers in Neural Models? Interpretation with Differentiable Masking. In _Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)_ (pp. 3243-3255).
+
+**[2]** Alexander Kolesnikov Alexey Dosovitskiy Dirk Weissenborn Georg Heigold Jakob Uszkoreit Lucas Beyer Matthias Minderer Mostafa Dehghani Neil Houlsby Sylvain Gelly Thomas Unterthiner Xiaohua Zhai (2021). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. In the Ninth International Conference on Learning Representations (ICLR).
+
