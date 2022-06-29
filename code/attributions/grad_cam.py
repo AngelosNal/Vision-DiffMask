@@ -32,7 +32,10 @@ def grad_cam(images: Tensor, vit: ViTForImageClassification, use_cuda: bool = Fa
 
 
 def _reshape_transform(tensor, height=14, width=14):
-    result = tensor[:, 1:, :].reshape(tensor.size(0), height, width, tensor.size(2))
+    C, P, E = tensor.shape
+    H = torch.sqrt(torch.tensor(P - 1)).int()
+    W = torch.sqrt(torch.tensor(P - 1)).int()
+    result = tensor[:, 1:, :].reshape(tensor.size(0), H, W, tensor.size(2))
 
     # Bring the channels to the first dimension
     result = result.transpose(2, 3).transpose(1, 2)
