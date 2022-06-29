@@ -13,6 +13,8 @@ DiffMask predicts how much each part of the input contributes to the final predi
 In this implementation, we extend the original idea for Computer Vision tasks.
 Currently, only Vision Transformers (ViT) in the image classification setting are supported.
 
+![Alt text](https://github.com/AngelosNal/Vision-DiffMask/blob/master/vizdiffmask_model.png?raw=true)
+
 ## Setup
 We provide a conda environment for the installation of the required packages.
 ```bash
