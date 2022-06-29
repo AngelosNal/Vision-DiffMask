@@ -2,8 +2,7 @@ from .image_classification import CIFAR10DataModule
 from argparse import ArgumentParser
 from functools import partial
 from torch import LongTensor
-from torch.utils.data import random_split, Sampler
-from torch.utils.data.dataloader import default_collate
+from torch.utils.data import default_collate, random_split, Sampler
 from torchvision import transforms
 from torchvision.datasets import VisionDataset
 from typing import Iterator, Optional
