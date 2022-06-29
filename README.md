@@ -212,5 +212,5 @@ This project is licensed under the [MIT license](LICENSE).
 ## References
 **[1]** De Cao, N., Schlichtkrull, M. S., Aziz, W., & Titov, I. (2020, November). How do Decisions Emerge across Layers in Neural Models? Interpretation with Differentiable Masking. In _Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)_ (pp. 3243-3255).
 
-**[2]** Alexander Kolesnikov Alexey Dosovitskiy Dirk Weissenborn Georg Heigold Jakob Uszkoreit Lucas Beyer Matthias Minderer Mostafa Dehghani Neil Houlsby Sylvain Gelly Thomas Unterthiner Xiaohua Zhai (2021). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. In the Ninth International Conference on Learning Representations (ICLR).
+**[2]** Alexander K., Alexey D., Dirk W., Georg H., Jakob U., Lucas B., Matthias M., Mostafa D., Neil H. Sylvain G., Thomas U., Xiaohua Z., (2021). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. In the Ninth International Conference on Learning Representations (ICLR).
 
