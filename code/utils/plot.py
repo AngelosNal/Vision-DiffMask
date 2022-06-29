@@ -212,6 +212,7 @@ class DrawMaskCallback(Callback):
         masks = outputs["mask"]
         kl_divs = outputs["kl_div"]
         pred_classes = outputs["pred_class"].cpu()
+        orig_pred_classes = outputs["orig_pred_class"].cpu()
 
         # Prepare masked samples for logging
         samples, masked_pixels_percentages = _prepare_samples(self.images, masks)
@@ -225,8 +226,9 @@ class DrawMaskCallback(Callback):
                 f"\n KL-divergence: {kl_div:.4f} "
                 f"\n Class: {pl_module.model.config.id2label[label]} "
                 f"\n Predicted Class: {pl_module.model.config.id2label[pred_class.item()]}"
-                for masked_pixels_percentage, kl_div, label, pred_class in zip(
-                    masked_pixels_percentages, kl_divs, self.labels, pred_classes
+                f"\n Original Predicted Class: {pl_module.model.config.id2label[orig_pred_class.item()]}"
+                for masked_pixels_percentage, kl_div, label, pred_class, orig_pred_class in zip(
+                    masked_pixels_percentages, kl_divs, self.labels, pred_classes, orig_pred_classes
                 )
             ],
         )

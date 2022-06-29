@@ -259,6 +259,7 @@ class ImageInterpretationNet(pl.LightningModule):
 
         # Get predicted class
         pred_class = logits.argmax(-1)
+        orig_pred_class = logits_orig.argmax(-1)
 
         # Get mask
         mask = expected_L0_full[:, :, idx].exp()
@@ -274,7 +275,8 @@ class ImageInterpretationNet(pl.LightningModule):
         mask = F.interpolate(mask, scale_factor=S)
         mask = mask.reshape(B, H, W)
 
-        return {"mask": mask, "kl_div": kl_div, "pred_class": pred_class}
+        return {"mask": mask, "kl_div": kl_div, "pred_class": pred_class,
+                "orig_pred_class": orig_pred_class}
 
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
