@@ -5,10 +5,10 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import (
     DataLoader,
     Dataset,
-    default_collate,
     RandomSampler,
     SequentialSampler,
 )
+from torch.utils.data.dataloader import default_collate
 from torchvision import transforms
 from typing import Optional
 
