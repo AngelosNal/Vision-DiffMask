@@ -81,7 +81,7 @@ class MLPMaxGate(nn.Module):
         self.hardtanh_params = hardtanh_params
 
     def forward(self, *args: Tensor) -> Tensor:
-        return self.f(torch.cat(args, -1)) / self.hardtanh_params[1]
+        return self.f(torch.cat(args, -1))
 
 
 class DiffMaskGateInput(nn.Module):
