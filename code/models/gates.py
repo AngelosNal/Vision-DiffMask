@@ -78,6 +78,7 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
             nn.Hardtanh(*hardtanh_params),
         )
+        self.hardtanh_params = hardtanh_params
 
     def forward(self, *args: Tensor) -> Tensor:
         return self.f(torch.cat(args, -1)) / self.hardtanh_params[1]
