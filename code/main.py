@@ -250,7 +250,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     jobid = os.getenv('SLURM_ARRAY_TASK_ID')
     if args.array_param and jobid:
-        eval(f"args.{args.array_param} = {jobid}")
+        exec(f"args.{args.array_param} = {jobid}")
     if args.array_param == 'hardtanh_params':
         args.hardtanh_params /= 3.
     args.hardtanh_params = (-float(args.hardtanh_params), float(args.hardtanh_params))
