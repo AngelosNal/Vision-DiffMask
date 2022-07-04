@@ -11,6 +11,19 @@ from typing import Optional
 from utils.distributions import RectifiedStreched, BinaryConcrete
 
 
+class HardTanh(nn.Module):
+    def __init__(self, params: Optional[tuple[float, float]] = (-1, 1)):
+        super().__init__()
+        self.params = params
+
+    def forward(self, x):
+        if x < self.params[0]:
+            return 0.0
+        elif x > self.params[1]:
+            return 1.0
+        else:
+            return torch.add(torch.div(x, 2 * self.params[1]), 0.5)
+
 class MLPGate(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias: bool = True):
         """
@@ -67,7 +80,7 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            nn.Hardtanh(*hardtanh_params),
+            HardTanh(hardtanh_params),
         )
 
     def forward(self, *args: Tensor) -> Tensor:
