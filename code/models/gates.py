@@ -9,16 +9,8 @@ import torch.nn as nn
 from torch import Tensor
 from typing import Optional
 from utils.distributions import RectifiedStreched, BinaryConcrete
+from sparsemax import Sparsemax
 
-
-class HardTanh(nn.Module):
-    def __init__(self, params: Optional[tuple[float, float]] = (-1, 1)):
-        super().__init__()
-        self.params = params
-
-    def forward(self, x):
-        """
-        """
 
 class MLPGate(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias: bool = True):
@@ -72,11 +64,11 @@ class MLPMaxGate(nn.Module):
         """
         super().__init__()
 
-        self.f = nn.Sequential(
+         self.f = nn.Sequential(
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            nn.ReLU6(),
+            Sparsemax(dim=-1),
         )
         self.hardtanh_params = hardtanh_params
 
