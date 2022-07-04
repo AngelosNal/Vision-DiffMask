@@ -16,4 +16,4 @@ module load Anaconda3/2021.05
 
 source activate dl2
 
-srun python -u code/main.py --enable_progress_bar --batch_size=64 --num_epochs 60 --array_param $1 --num_workers=16
+srun python -u code/main.py --enable_progress_bar --batch_size=64 --num_epochs 60 --array_param $1 --num_workers=16 --experiment_name "HardTanh(-$SLURM_ARRAY_TASK_ID/3, -$SLURM_ARRAY_TASK_ID/3)-TVD" --clip_max 400. --alpha 150.
