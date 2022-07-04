@@ -143,6 +143,8 @@ class ImageInterpretationNet(pl.LightningModule):
             ]
         )
 
+        self.tvd_loss = torch.nn.L1Loss()
+
         # Register buffers for running metrics
         self.register_buffer(
             "running_acc", torch.ones((model_cfg.num_hidden_layers + 1,))
@@ -303,14 +305,7 @@ class ImageInterpretationNet(pl.LightningModule):
             layer_pred,
         ) = self.forward_explainer(x)
 
-        # Calculate the KL-divergence loss term
-        loss_c = (
-            torch.distributions.kl_divergence(
-                torch.distributions.Categorical(logits=logits_orig),
-                torch.distributions.Categorical(logits=logits),
-            )
-            - self.hparams.eps
-        )
+        loss_c = self.tvd_loss(logits.softmax(-1), logits_orig.softmax(-1)) - self.hparams.eps
 
         # Calculate the L0 loss term
         loss_g = expected_L0.mean(-1)
