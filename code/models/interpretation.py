@@ -88,6 +88,7 @@ class ImageInterpretationNet(pl.LightningModule):
         lr_alpha: float = 0.3,
         placeholder: bool = True,
         weighted_layer_pred: bool = False,
+        hardtanh_params: Optional[tuple[float, float]] = None,
     ):
         """A PyTorch Lightning Module for the VisionDiffMask model on the Vision Transformer.
 
@@ -115,6 +116,7 @@ class ImageInterpretationNet(pl.LightningModule):
             num_hidden_layers=model_cfg.num_hidden_layers + 1,
             max_position_embeddings=1,
             placeholder=placeholder,
+            hardtanh_params=hardtanh_params,
         )
 
         # Create the Lagrangian values for the dual optimization

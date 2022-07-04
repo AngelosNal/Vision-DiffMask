@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from transformers import ViTForImageClassification
 from utils.plot import DrawMaskCallback, log_masks
-
+import os
 import pytorch_lightning as pl
 
 
@@ -116,6 +116,7 @@ def main(args: Namespace):
         lr_alpha=args.lr_alpha,
         placeholder=not args.no_placeholder,
         weighted_layer_pred=args.weighted_layer_distribution,
+        hardtanh_params=args.hardtanh_params,
     )
     if args.diffmask_checkpoint:
         diffmask = ImageInterpretationNet.load_from_checkpoint(
@@ -210,6 +211,14 @@ if __name__ == "__main__":
         help="Name of the experiment.",
     )
 
+    parser.add_argument(
+        "--hardtanh_params",
+        type=str,
+        default="1.0",
+        help="Parameters for the Hardtanh activation.",
+    )
+
+
     # Interpretation model
     ImageInterpretationNet.add_model_specific_args(parser)
 
@@ -224,6 +233,18 @@ if __name__ == "__main__":
         help="The dataset to use.",
     )
 
+    parser.add_argument(
+        "--array_param",
+        type=str,
+        default="",
+        help="Parameter for the slurm array (Overwrites the cli argument).",
+    )
+    
     args = parser.parse_args()
+    jobid = os.getenv('SLURM_ARRAY_TASK_ID')
+    if args.array_param and jobid:
+        eval(f"args.{args.array_param} = {jobid}")
+
+    args.hardtanh_params = (-float(args.hardtanh_params), float(args.hardtanh_params))
 
     main(args)

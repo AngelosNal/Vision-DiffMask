@@ -46,6 +46,7 @@ class MLPMaxGate(nn.Module):
         input_size: int,
         hidden_size: int,
         bias: bool = True,
+        hardtanh_params: Optional[Tuple[float, float]] = None,
     ):
         """
         This is an MLP with the following structure;
@@ -66,7 +67,7 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            nn.Hardsigmoid(),
+            nn.Hardtanh(*hardtanh_params),
         )
 
     def forward(self, *args: Tensor) -> Tensor:
@@ -84,6 +85,7 @@ class DiffMaskGateInput(nn.Module):
         gate_bias: bool = True,
         placeholder: bool = False,
         init_vector: Tensor = None,
+        hardtanh_params: Optional[Tuple[float, float]] = None,
     ):
         """This is a DiffMask module that masks the input of the first layer.
 
@@ -106,6 +108,7 @@ class DiffMaskGateInput(nn.Module):
                     hidden_size * 2,
                     hidden_attention,
                     gate_bias,
+                    hardtanh_params=hardtanh_params,
                 )
                 for _ in range(num_hidden_layers)
             ]
