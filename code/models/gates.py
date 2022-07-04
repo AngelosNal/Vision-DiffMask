@@ -67,7 +67,8 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            nn.Hardtanh(*hardtanh_params),
+            # nn.Hardtanh(*hardtanh_params),
+            nn.Hardsigmoid(),
         )
 
     def forward(self, *args: Tensor) -> Tensor:
