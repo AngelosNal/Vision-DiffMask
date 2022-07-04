@@ -17,12 +17,8 @@ class HardTanh(nn.Module):
         self.params = params
 
     def forward(self, x):
-        if x < self.params[0]:
-            return 0.0
-        elif x > self.params[1]:
-            return 1.0
-        else:
-            return torch.add(torch.div(x, 2 * self.params[1]), 0.5)
+        """
+        """
 
 class MLPGate(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias: bool = True):
@@ -80,11 +76,11 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            HardTanh(hardtanh_params),
+            nn.Hardtanh(*hardtanh_params),
         )
 
     def forward(self, *args: Tensor) -> Tensor:
-        return self.f(torch.cat(args, -1))
+        return self.f(torch.cat(args, -1)) / self.hardtanh_params[1]
 
 
 class DiffMaskGateInput(nn.Module):
