@@ -45,8 +45,6 @@ class MLPMaxGate(nn.Module):
         self,
         input_size: int,
         hidden_size: int,
-        mul_activation: float = 10.0,
-        add_activation: float = 5.0,
         bias: bool = True,
     ):
         """
@@ -60,8 +58,6 @@ class MLPMaxGate(nn.Module):
         Args:
             input_size (int): the number of input features
             hidden_size (int): the number of hidden units
-            mul_activation (float): the scaler for the output of the activation function
-            add_activation (float): the offset for the output of the activation function
             bias (bool): whether to use a bias term
         """
         super().__init__()
@@ -70,13 +66,11 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            nn.Tanh(),
+            nn.Hardsigmoid(),
         )
-        self.add_activation = nn.Parameter(torch.tensor(add_activation))
-        self.mul_activation = mul_activation
 
     def forward(self, *args: Tensor) -> Tensor:
-        return self.f(torch.cat(args, -1)) * self.mul_activation + self.add_activation
+        return self.f(torch.cat(args, -1))
 
 
 class DiffMaskGateInput(nn.Module):
@@ -87,8 +81,6 @@ class DiffMaskGateInput(nn.Module):
         num_hidden_layers: int,
         max_position_embeddings: int,
         gate_fn: nn.Module = MLPMaxGate,
-        mul_activation: float = 10.0,
-        add_activation: float = 5.0,
         gate_bias: bool = True,
         placeholder: bool = False,
         init_vector: Tensor = None,
@@ -101,8 +93,6 @@ class DiffMaskGateInput(nn.Module):
             num_hidden_layers (int): the number of hidden layers (and thus gates to use)
             max_position_embeddings (int): the amount of placeholder embeddings to learn for the masked positions
             gate_fn (nn.Module): the PyTorch module to use as a gate
-            mul_activation (float): the scaler for the output of the activation function
-            add_activation (float): the offset for the output of the activation function
             gate_bias (bool): whether to use a bias term
             placeholder (bool): whether to use placeholder embeddings or a zero vector
             init_vector (Tensor): the initial vector to use for the placeholder embeddings
@@ -115,8 +105,6 @@ class DiffMaskGateInput(nn.Module):
                 gate_fn(
                     hidden_size * 2,
                     hidden_attention,
-                    mul_activation,
-                    add_activation,
                     gate_bias,
                 )
                 for _ in range(num_hidden_layers)
@@ -155,20 +143,13 @@ class DiffMaskGateInput(nn.Module):
             -1,
         )
 
-        # Define a Hard Concrete distribution
-        dist = RectifiedStreched(
-            BinaryConcrete(torch.full_like(logits, 0.2), logits),
-            l=-0.2,
-            r=1.0,
-        )
-
         # Calculate the expectation for the full gate probabilities
         # These act as votes for the masked positions
-        gates_full = dist.rsample().cumprod(-1)
+        gates_full = logits.cumsum(-1) / logits.shape[-1]
         if aggregated:
-            expected_L0_full = dist.log_expected_L0().cumsum(-1)
+            expected_L0_full = gates_full
         else:
-            expected_L0_full = dist.log_expected_L0()
+            expected_L0_full = logits
 
         # Extract the probabilities from the last layer, which acts
         # as an aggregation of the votes per position

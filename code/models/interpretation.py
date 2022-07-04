@@ -61,18 +61,6 @@ class ImageInterpretationNet(pl.LightningModule):
             help="Learning rate for lagrangian optimizer.",
         )
         parser.add_argument(
-            "--mul_activation",
-            type=float,
-            default=15.0,
-            help="Value to multiply gate activations.",
-        )
-        parser.add_argument(
-            "--add_activation",
-            type=float,
-            default=8.0,
-            help="Value to add to gate activations.",
-        )
-        parser.add_argument(
             "--weighted_layer_distribution",
             action="store_true",
             help="Whether to use a weighted distribution when picking a layer in DiffMask forward.",
@@ -98,8 +86,6 @@ class ImageInterpretationNet(pl.LightningModule):
         acc_valid: float = 0.75,
         lr_placeholder: float = 1e-3,
         lr_alpha: float = 0.3,
-        mul_activation: float = 10.0,
-        add_activation: float = 5.0,
         placeholder: bool = True,
         weighted_layer_pred: bool = False,
     ):
@@ -114,8 +100,6 @@ class ImageInterpretationNet(pl.LightningModule):
             acc_valid (float): the accuracy threshold for the validation step
             lr_placeholder (float): the learning rate for the learnable masking embeddings
             lr_alpha (float): the learning rate for the Lagrangian
-            mul_activation (float): the value to multiply the gate activations by
-            add_activation (float): the value to add to the gate activations
             placeholder (bool): whether to use placeholder embeddings or a zero vector
             weighted_layer_pred (bool): whether to use a weighted distribution when picking a layer
         """
@@ -130,8 +114,6 @@ class ImageInterpretationNet(pl.LightningModule):
             hidden_attention=model_cfg.hidden_size // 4,
             num_hidden_layers=model_cfg.num_hidden_layers + 1,
             max_position_embeddings=1,
-            mul_activation=mul_activation,
-            add_activation=add_activation,
             placeholder=placeholder,
         )
 
@@ -268,7 +250,7 @@ class ImageInterpretationNet(pl.LightningModule):
         orig_pred_class = logits_orig.argmax(-1)
 
         # Get mask
-        mask = expected_L0_full[:, :, idx].exp()
+        mask = expected_L0_full[:, :, idx]
         mask = mask[:, 1:]
 
         C, H, W = x.shape[1:]  # channels, height, width
@@ -313,7 +295,8 @@ class ImageInterpretationNet(pl.LightningModule):
         )
 
         # Calculate the L0 loss term
-        loss_g = expected_L0.mean(-1)
+        # loss_g = expected_L0.mean(-1)
+        loss_g = torch.log(expected_L0 + 1e-13).mean(-1)
 
         # Calculate the full loss term
         loss = self.alpha[layer_pred] * loss_c + loss_g
@@ -324,7 +307,7 @@ class ImageInterpretationNet(pl.LightningModule):
         )
 
         # Calculate the average L0 loss
-        l0 = expected_L0.exp().mean(-1)
+        l0 = expected_L0.mean(-1)
 
         outputs_dict = {
             "loss_c": loss_c.mean(-1),

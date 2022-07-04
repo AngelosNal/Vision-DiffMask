@@ -74,13 +74,13 @@ def setup_sample_image_logs(
         samples = sample_images[panel]
         X, _ = samples
 
-        # Log GradCAM
-        gradcam_masks = grad_cam(X, vit)
-        log_masks(X, gradcam_masks, f"GradCAM {panel}", logger)
-
-        # Log Attention Rollout
-        rollout_masks = attention_rollout(X, vit)
-        log_masks(X, rollout_masks, f"Attention Rollout {panel}", logger)
+        # # Log GradCAM
+        # gradcam_masks = grad_cam(X, vit)
+        # log_masks(X, gradcam_masks, f"GradCAM {panel}", logger)
+        #
+        # # Log Attention Rollout
+        # rollout_masks = attention_rollout(X, vit)
+        # log_masks(X, rollout_masks, f"Attention Rollout {panel}", logger)
 
         # Create mask callback
         callbacks += [mask_cb(samples, key=f"{panel}")]
@@ -114,8 +114,6 @@ def main(args: Namespace):
         eps=args.eps,
         lr_placeholder=args.lr_placeholder,
         lr_alpha=args.lr_alpha,
-        mul_activation=args.mul_activation,
-        add_activation=args.add_activation,
         placeholder=not args.no_placeholder,
         weighted_layer_pred=args.weighted_layer_distribution,
     )
