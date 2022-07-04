@@ -64,7 +64,7 @@ class MLPMaxGate(nn.Module):
         """
         super().__init__()
 
-         self.f = nn.Sequential(
+        self.f = nn.Sequential(
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
