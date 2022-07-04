@@ -234,6 +234,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--clip_max",
+        type=float,
+        default=200.,
+        help="Maximum value for the Lagrangian parameter alpha.",
+    )
+
+    parser.add_argument(
         "--array_param",
         type=str,
         default="",
