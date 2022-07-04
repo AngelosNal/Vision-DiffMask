@@ -46,7 +46,7 @@ class MLPMaxGate(nn.Module):
         input_size: int,
         hidden_size: int,
         bias: bool = True,
-        hardtanh_params: Optional[Tuple[float, float]] = None,
+        hardtanh_params: Optional[tuple[float, float]] = None,
     ):
         """
         This is an MLP with the following structure;
@@ -85,7 +85,7 @@ class DiffMaskGateInput(nn.Module):
         gate_bias: bool = True,
         placeholder: bool = False,
         init_vector: Tensor = None,
-        hardtanh_params: Optional[Tuple[float, float]] = None,
+        hardtanh_params: Optional[tuple[float, float]] = None,
     ):
         """This is a DiffMask module that masks the input of the first layer.
 
