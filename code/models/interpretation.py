@@ -128,6 +128,8 @@ class ImageInterpretationNet(pl.LightningModule):
             ]
         )
 
+        self.clip_max = clip_max
+
         # Register buffers for running metrics
         self.register_buffer(
             "running_acc", torch.ones((model_cfg.num_hidden_layers + 1,))
