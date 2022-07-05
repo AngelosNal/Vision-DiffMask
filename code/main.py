@@ -247,12 +247,5 @@ if __name__ == "__main__":
         help="The dataset to use.",
     )
 
-    parser.add_argument(
-        "--clip_max",
-        type=float,
-        default=200.,
-        help="Maximum value for the Lagrangian parameter alpha.",
-    )
-
     args = parser.parse_args()
     main(args)
