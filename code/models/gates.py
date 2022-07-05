@@ -21,7 +21,7 @@ class HardSigmoid(nn.Module):
         if not self.param:
             return torch.div(torch.min(torch.max(x + 0.5, torch.zeros_like(x)), 2 * 0.5), 1)
         else:
-            h = self.param
+            h = float(self.param)
             return torch.div(torch.min(torch.max(x + h, torch.zeros_like(x)), 2 * h), 2 * h)
 
 
