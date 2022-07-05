@@ -13,7 +13,7 @@ from utils.distributions import RectifiedStreched, BinaryConcrete
 
 class HardSigmoid(nn.Module):
     def __init__(self, param=None, inplace: bool = False):
-        super().__init__(self)
+        super().__init__()
         self.inplace = inplace
         self.param = param
 
