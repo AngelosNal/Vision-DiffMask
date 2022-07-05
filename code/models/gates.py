@@ -11,6 +11,21 @@ from typing import Optional
 from utils.distributions import RectifiedStreched, BinaryConcrete
 
 
+class HardSigmoid(nn.Module):
+    def __init__(self, inplace: bool = False):
+        super().__init__(self, param=None)
+        self.inplace = inplace
+        self.param = param
+
+    def forward(self, x: Tensor) -> Tensor:
+        if not self.param:
+            return torch.div(torch.min(torch.max(x + 0.5, torch.zeros_like(x)), 2 * 0.5), 1)
+        else:
+            h = self.param
+            return torch.div(torch.min(torch.max(x + h, torch.zeros_like(x)), 2 * h), 2 * h)
+
+
+
 class MLPGate(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias: bool = True):
         """
@@ -46,7 +61,7 @@ class MLPMaxGate(nn.Module):
         input_size: int,
         hidden_size: int,
         bias: bool = True,
-        hardtanh_params: Optional[tuple[float, float]] = None,
+        hardtanh_param: float = None,
     ):
         """
         This is an MLP with the following structure;
@@ -68,7 +83,7 @@ class MLPMaxGate(nn.Module):
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
             # nn.Hardtanh(*hardtanh_params),
-            nn.Hardsigmoid(),
+            HardSigmoid(hardtanh_param),
         )
 
     def forward(self, *args: Tensor) -> Tensor:
@@ -86,7 +101,7 @@ class DiffMaskGateInput(nn.Module):
         gate_bias: bool = True,
         placeholder: bool = False,
         init_vector: Tensor = None,
-        hardtanh_params: Optional[tuple[float, float]] = None,
+        hardtanh_param: float = None,
     ):
         """This is a DiffMask module that masks the input of the first layer.
 
@@ -109,7 +124,7 @@ class DiffMaskGateInput(nn.Module):
                     hidden_size * 2,
                     hidden_attention,
                     gate_bias,
-                    hardtanh_params=hardtanh_params,
+                    hardtanh_param=hardtanh_param,
                 )
                 for _ in range(num_hidden_layers)
             ]
