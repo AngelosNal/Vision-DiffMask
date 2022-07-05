@@ -125,7 +125,7 @@ def main(args: Namespace):
 
     # Create wandb logger instance
     wandb_logger = WandbLogger(
-        name=get_experiment_name(args),
+        name=args.experiment_name if args.experiment_name else get_experiment_name(args),
         project="Patch-DiffMask",
     )
 
@@ -201,6 +201,28 @@ if __name__ == "__main__":
         type=str,
         default="tanlq/vit-base-patch16-224-in21k-finetuned-cifar10",
         help="The name of the pretrained HF model to load.",
+    )
+
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default="",
+        help="Name of the experiment.",
+    )
+
+    parser.add_argument(
+        "--clip_max",
+        type=float,
+        default=200.,
+        help="Maximum value for the Lagrangian parameter alpha.",
+    )
+
+    parser.add_argument(
+        "--distloss",
+        type=str,
+        default="KL",
+        choices=["KL", "TVD"],
+        help="Distribution loss to use.",
     )
 
     # Interpretation model

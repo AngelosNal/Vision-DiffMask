@@ -88,6 +88,8 @@ class ImageInterpretationNet(pl.LightningModule):
         lr_alpha: float = 0.3,
         placeholder: bool = True,
         weighted_layer_pred: bool = False,
+        clip_max: Optional[float] = 200.,
+        distloss: str = "KL",
     ):
         """A PyTorch Lightning Module for the VisionDiffMask model on the Vision Transformer.
 
@@ -124,6 +126,11 @@ class ImageInterpretationNet(pl.LightningModule):
                 for _ in range(model_cfg.num_hidden_layers + 1)
             ]
         )
+        self.distloss = distloss
+        if self.distloss == "TVD":
+            self.tvd_loss = torch.nn.L1Loss()
+
+        self.clip_max = clip_max
 
         # Register buffers for running metrics
         self.register_buffer(
@@ -285,21 +292,24 @@ class ImageInterpretationNet(pl.LightningModule):
             layer_pred,
         ) = self.forward_explainer(x)
 
-        # Calculate the KL-divergence loss term
-        loss_c = (
-            torch.distributions.kl_divergence(
+
+        if self.distloss == "KL":
+            # Calculate KL-divergence
+            distloss = torch.distributions.kl_divergence(
                 torch.distributions.Categorical(logits=logits_orig),
                 torch.distributions.Categorical(logits=logits),
             )
-            - self.hparams.eps
-        )
+        elif self.distloss == "TVD":
+            distloss = self.tvd_loss(logits.softmax(-1), logits_orig.softmax(-1)) - self.hparams.eps
+        else:
+            raise ValueError(f"Unknown distloss {self.distloss}. Choose from 'KL' or 'TVD'.")
 
         # Calculate the L0 loss term
         # loss_g = expected_L0.mean(-1)
         loss_g = torch.log(expected_L0 + 1e-13).mean(-1)
 
         # Calculate the full loss term
-        loss = self.alpha[layer_pred] * loss_c + loss_g
+        loss = self.alpha[layer_pred] * distloss + loss_g
 
         # Calculate the accuracy
         acc, _, _, _ = accuracy_precision_recall_f1(
@@ -310,7 +320,7 @@ class ImageInterpretationNet(pl.LightningModule):
         l0 = expected_L0.mean(-1)
 
         outputs_dict = {
-            "loss_c": loss_c.mean(-1),
+            self.distloss: distloss.mean(-1),
             "loss_g": loss_g.mean(-1),
             "alpha": self.alpha[layer_pred].mean(-1),
             "acc": acc,
@@ -333,7 +343,7 @@ class ImageInterpretationNet(pl.LightningModule):
             "loss", outputs_dict["loss"], on_step=True, on_epoch=True, prog_bar=True
         )
         self.log(
-            "loss_c", outputs_dict["loss_c"], on_step=True, on_epoch=True, prog_bar=True
+            self.distloss, outputs_dict[self.distloss], on_step=True, on_epoch=True, prog_bar=True
         )
         self.log(
             "loss_g", outputs_dict["loss_g"], on_step=True, on_epoch=True, prog_bar=True
@@ -363,16 +373,16 @@ class ImageInterpretationNet(pl.LightningModule):
     def validation_epoch_end(self, outputs: list[dict]):
         outputs_dict = {
             k: [e[k] for e in outputs if k in e]
-            for k in ("val_loss_c", "val_loss_g", "val_acc", "val_l0")
+            for k in (f"val_{self.distloss}", "val_loss_g", "val_acc", "val_l0")
         }
 
         outputs_dict = {k: sum(v) / len(v) for k, v in outputs_dict.items()}
 
-        outputs_dict["val_loss_c"] += self.hparams.eps
+        outputs_dict[f"val_{self.distloss}"] += self.hparams.eps
 
         outputs_dict = {
             "val_loss": outputs_dict["val_l0"]
-            if outputs_dict["val_loss_c"] <= self.hparams.eps_valid
+            if outputs_dict[f"val_{self.distloss}"] <= self.hparams.eps_valid
             and outputs_dict["val_acc"] >= self.hparams.acc_valid
             else torch.full_like(outputs_dict["val_l0"], float("inf")),
             **outputs_dict,
@@ -461,8 +471,8 @@ class ImageInterpretationNet(pl.LightningModule):
                     self.alpha[i].data,
                 )
                 self.alpha[i].data = torch.where(
-                    self.alpha[i].data > 200,
-                    torch.full_like(self.alpha[i].data, 200),
+                    self.alpha[i].data > self.clip_max,
+                    torch.full_like(self.alpha[i].data, self.clip_max),
                     self.alpha[i].data,
                 )
 

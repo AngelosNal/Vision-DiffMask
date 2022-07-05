@@ -1,0 +1,29 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=Patch-DiffMask
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=48:00:00
+#SBATCH --mem=100000M
+#SBATCH --output=lisa/outputs/patch_diffmask_train_%A_%a.out
+#SBATCH --array=1-8
+
+module purge
+module load 2021
+module load Anaconda3/2021.05
+
+source activate dl2
+
+JOB_FILE=$(realpath "$0")
+HPARAMS_FILE=$(pwd)/hparams.txt
+CHECKPOINTDIR=$(pwd)/array_job_${SLURM_ARRAY_JOB_ID}
+
+mkdir $CHECKPOINTDIR
+rsync $HPARAMS_FILE $CHECKPOINTDIR/
+rsync $JOB_FILE $CHECKPOINTDIR/
+
+srun python -u code/main.py \
+	       --checkpoint_path $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
+               $(head -$SLURM_ARRAY_TASK_ID $HPARAMS_FILE | tail -1)
