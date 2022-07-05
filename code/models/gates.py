@@ -129,6 +129,8 @@ class DiffMaskGateInput(nn.Module):
                 torch.zeros((1, 1, hidden_size)),
             )
 
+        self.averaging_weights = nn.Parameter(torch.ones(1, 1, num_hidden_layers))
+
     def forward(
         self, hidden_states: tuple[Tensor], layer_pred: Optional[int], aggregated: bool = True
     ) -> tuple[tuple[Tensor], Tensor, Tensor, Tensor, Tensor]:
@@ -145,7 +147,11 @@ class DiffMaskGateInput(nn.Module):
 
         # Calculate the expectation for the full gate probabilities
         # These act as votes for the masked positions
-        gates_full = logits.cumsum(-1) / logits.shape[-1]
+
+        # gates_full = logits.cumsum(-1) / logits.shape[-1]
+        gates_full = torch.cumsum(logits * self.averaging_weights[:, :, :logits.shape[-1]], dim=-1)
+        gates_full /= self.averaging_weights[:, :, :logits.shape[-1]].cumsum(dim=-1)
+
         if aggregated:
             expected_L0_full = gates_full
         else:

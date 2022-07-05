@@ -390,6 +390,10 @@ class ImageInterpretationNet(pl.LightningModule):
                         "lr": self.hparams.lr,
                     },
                     {
+                        "params": self.gate.averaging_weights,
+                        "lr": self.hparams.lr
+                    },
+                    {
                         "params": self.gate.placeholder.parameters()
                         if isinstance(self.gate.placeholder, torch.nn.ParameterList)
                         else [self.gate.placeholder],
