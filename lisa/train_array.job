@@ -18,12 +18,11 @@ source activate dl2
 
 JOB_FILE=$(realpath "$0")
 HPARAMS_FILE=$(pwd)/hparams.txt
-CHECKPOINTDIR=$(pwd)/array_job_${SLURM_ARRAY_JOB_ID}
+# CHECKPOINTDIR=$(pwd)/array_job_${SLURM_ARRAY_JOB_ID}
 
-mkdir $CHECKPOINTDIR
-rsync $HPARAMS_FILE $CHECKPOINTDIR/
-rsync $JOB_FILE $CHECKPOINTDIR/
+# mkdir $CHECKPOINTDIR
+# rsync $HPARAMS_FILE $CHECKPOINTDIR/
+# rsync $JOB_FILE $CHECKPOINTDIR/
 
 srun python -u code/main.py \
-	       --checkpoint_path $CHECKPOINTDIR/experiment_${SLURM_ARRAY_TASK_ID} \
                $(head -$SLURM_ARRAY_TASK_ID $HPARAMS_FILE | tail -1)
