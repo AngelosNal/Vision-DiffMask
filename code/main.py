@@ -116,7 +116,7 @@ def main(args: Namespace):
         lr_alpha=args.lr_alpha,
         placeholder=not args.no_placeholder,
         weighted_layer_pred=args.weighted_layer_distribution,
-        hardtanh_params=args.hardtanh_params,
+        hardtanh_param=args.hardtanh_param,
     )
     if args.diffmask_checkpoint:
         diffmask = ImageInterpretationNet.load_from_checkpoint(
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log_every_n_steps",
         type=int,
-        default=200,
+        default=1000,
         help="Number of steps between logging media & checkpoints.",
     )
 
