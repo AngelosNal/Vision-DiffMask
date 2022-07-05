@@ -19,10 +19,10 @@ class HardSigmoid(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         if not self.param:
-            return torch.div(torch.min(torch.max(x + 0.5, torch.zeros_like(x)), 2 * 0.5), 1)
+            return torch.div(torch.min(torch.max(x + 0.5, torch.zeros_like(x)), 2 * 0.5 * torch.ones_like(x)), 1)
         else:
             h = float(self.param)
-            return torch.div(torch.min(torch.max(x + h, torch.zeros_like(x)), 2 * h), 2 * h)
+            return torch.div(torch.min(torch.max(x + h, torch.zeros_like(x)), 2 * h * torch.ones_like(x)), 2 * h)
 
 
 
