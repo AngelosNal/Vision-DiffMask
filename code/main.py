@@ -218,6 +218,21 @@ if __name__ == "__main__":
         help="Parameter for the Hardtanh activation.",
     )
 
+    parser.add_argument(
+        "--clip_max",
+        type=float,
+        default=200.,
+        help="Maximum value for the Lagrangian parameter alpha.",
+    )
+
+    parser.add_argument(
+        "--distloss",
+        type=str,
+        default="KL",
+        choices=["KL", "TVD"],
+        help="Distribution loss to use.",
+    )
+
     # Interpretation model
     ImageInterpretationNet.add_model_specific_args(parser)
 
