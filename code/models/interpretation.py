@@ -71,6 +71,12 @@ class ImageInterpretationNet(pl.LightningModule):
             default=None,
             help="Path to a checkpoint to load DiffMask weights from.",
         )
+        parser.add_argument(
+            "--averaging_lr_factor",
+            type=float,
+            default=1,
+            help="Learning rate factor for the averaging weights.",
+        )
         return parent_parser
 
     # Declare variables that will be initialized later
@@ -88,6 +94,7 @@ class ImageInterpretationNet(pl.LightningModule):
         lr_alpha: float = 0.3,
         placeholder: bool = True,
         weighted_layer_pred: bool = False,
+        averaging_lr_factor: float = 1,
         clip_max: Optional[float] = 200.,
         distloss: str = "KL",
     ):
@@ -401,7 +408,7 @@ class ImageInterpretationNet(pl.LightningModule):
                     },
                     {
                         "params": self.gate.averaging_weights,
-                        "lr": self.hparams.lr
+                        "lr": self.hparams.lr * self.hparams.averaging_lr_factor,
                     },
                     {
                         "params": self.gate.placeholder.parameters()
