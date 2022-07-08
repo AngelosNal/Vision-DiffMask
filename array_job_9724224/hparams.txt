@@ -1,0 +1,6 @@
+--batch_size=64 --num_epochs 60 --num_workers=16 --experiment_name "HardSigmoidLearnableAveragingTVDcap400" --clip_max 400. --alpha 150. --distloss TVD
+--batch_size=64 --num_epochs 60 --num_workers=16 --experiment_name "HardSigmoidLearnableAveragingTVDcap200" --clip_max 200. --alpha 150. --distloss TVD
+--batch_size=64 --num_epochs 60 --num_workers=16 --experiment_name "HardSigmoidLearnableAveragingTVDcap1000alpha400" --clip_max 1000. --alpha 400. --distloss TVD
+--batch_size=64 --num_epochs 60 --num_workers=16 --experiment_name "HardSigmoidLearnableAveragingTVDcap600alpha400" --clip_max 600. --alpha 400. --distloss TVD
+--batch_size=64 --num_epochs 60 --num_workers=16 --experiment_name "HardSigmoidLearnableAveragingKLcap200" --clip_max 200. --alpha 20. --distloss KL
+--batch_size=64 --num_epochs 60 --num_workers=16 --experiment_name "HardSigmoidLearnableAveragingKLcap400" --clip_max 400. --alpha 20. --distloss KL
