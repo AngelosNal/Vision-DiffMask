@@ -129,7 +129,7 @@ class DiffMaskGateInput(nn.Module):
                 torch.zeros((1, 1, hidden_size)),
             )
 
-        self.averaging_weights = nn.Parameter(torch.rand(1, 1, num_hidden_layers))
+        self.averaging_weights = nn.Parameter(torch.ones(1, 1, num_hidden_layers))
 
     def forward(
         self, hidden_states: tuple[Tensor], layer_pred: Optional[int], aggregated: bool = True
@@ -153,18 +153,18 @@ class DiffMaskGateInput(nn.Module):
         # gates_full = logits.cumsum(-1) / logits.shape[-1]
 
         # Learnable averaging
-        # gates_full = torch.cumsum(logits * self.averaging_weights[:, :, :logits.shape[-1]], dim=-1)
-        # gates_full /= self.averaging_weights[:, :, :logits.shape[-1]].cumsum(dim=-1)
+        gates_full = torch.cumsum(logits * nn.functional.relu(self.averaging_weights[:, :, :logits.shape[-1]]), dim=-1)
+        gates_full /= nn.functional.relu(self.averaging_weights[:, :, :logits.shape[-1]]).cumsum(dim=-1)
 
         # Learnable averaging with normalized weights
         # TODO: only the last's layers attributions are correct due to normalization
-        if logits.shape[-1] > 1:
-            min_w = self.averaging_weights[:, :, :logits.shape[-1]].min(dim=-1)[0]
-            max_w = self.averaging_weights[:, :, :logits.shape[-1]].max(dim=-1)[0]
-            normalized_weights = (self.averaging_weights[:, :, :logits.shape[-1]] - min_w) / (max_w - min_w)
-            gates_full = torch.cumsum(logits * normalized_weights, dim=-1)
-        else:
-            gates_full = logits
+        # if logits.shape[-1] > 1:
+        #     min_w = self.averaging_weights[:, :, :logits.shape[-1]].min(dim=-1)[0]
+        #     max_w = self.averaging_weights[:, :, :logits.shape[-1]].max(dim=-1)[0]
+        #     normalized_weights = (self.averaging_weights[:, :, :logits.shape[-1]] - min_w) / (max_w - min_w)
+        #     gates_full = torch.cumsum(logits * normalized_weights, dim=-1)
+        # else:
+        #     gates_full = logits
 
         # Normalize to 0-1
         # gates_full = logits.cumsum(-1)

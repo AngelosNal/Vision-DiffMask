@@ -1,1 +1,1 @@
---batch_size=64 --num_epochs 30 --num_workers=16 --experiment_name "WeightNorm-Factor100k" --clip_max 400. --alpha 150. --distloss TVD --averaging_lr_factor=100000
+--batch_size=64 --num_epochs 30 --num_workers=16 --experiment_name "ReluWeights-Factor100k" --clip_max 400. --alpha 150. --distloss TVD --averaging_lr_factor=100000
