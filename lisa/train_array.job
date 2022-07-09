@@ -8,7 +8,7 @@
 #SBATCH --time=48:00:00
 #SBATCH --mem=100000M
 #SBATCH --output=lisa/outputs/patch_diffmask_train_%A_%a.out
-#SBATCH --array=1-3
+#SBATCH --array=1-2
 
 module purge
 module load 2021
