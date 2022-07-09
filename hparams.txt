@@ -1,2 +1,2 @@
---batch_size=64 --num_epochs 30 --num_workers=16 --experiment_name "NormalizationTanhTVD" --clip_max 400. --alpha 150. --distloss TVD
---batch_size=64 --num_epochs 30 --num_workers=16 --experiment_name "NormalizationTanhKL" --clip_max 400. --alpha 150. --distloss KL
+--batch_size=64 --num_epochs 30 --num_workers=16 --experiment_name "NormalizationTanhTVDalpha20" --clip_max 400. --alpha 20. --distloss TVD
+--batch_size=64 --num_epochs 30 --num_workers=16 --experiment_name "NormalizationTanhKLalpha20" --clip_max 400. --alpha 20. --distloss KL
