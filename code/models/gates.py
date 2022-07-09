@@ -66,7 +66,7 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            nn.Hardsigmoid(),
+            nn.Tanh(),
         )
 
     def forward(self, *args: Tensor) -> Tensor:
@@ -148,9 +148,19 @@ class DiffMaskGateInput(nn.Module):
         # Calculate the expectation for the full gate probabilities
         # These act as votes for the masked positions
 
+        # Averaging
         # gates_full = logits.cumsum(-1) / logits.shape[-1]
-        gates_full = torch.cumsum(logits * self.averaging_weights[:, :, :logits.shape[-1]], dim=-1)
-        gates_full /= self.averaging_weights[:, :, :logits.shape[-1]].cumsum(dim=-1)
+
+        # Learnable averaging
+        # gates_full = torch.cumsum(logits * self.averaging_weights[:, :, :logits.shape[-1]], dim=-1)
+        # gates_full /= self.averaging_weights[:, :, :logits.shape[-1]].cumsum(dim=-1)
+
+        # Normalize to 0-1
+        gates_full = logits.cumsum(-1)
+        min_attr = gates_full.min(dim=-2, keepdims=True).values
+        max_attr = gates_full.max(dim=-2, keepdims=True).values
+        gates_full = (gates_full - min_attr) / (max_attr - min_attr)
+
 
         if aggregated:
             expected_L0_full = gates_full
