@@ -316,7 +316,7 @@ class ImageInterpretationNet(pl.LightningModule):
             distloss = torch.distributions.kl_divergence(
                 torch.distributions.Categorical(logits=logits_orig),
                 torch.distributions.Categorical(logits=logits),
-            )
+            ) - self.hparams.eps
         elif self.distloss == "TVD":
             distloss = self.tvd_loss(logits.softmax(-1), logits_orig.softmax(-1)) - self.hparams.eps
         else:
