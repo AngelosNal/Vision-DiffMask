@@ -117,6 +117,7 @@ def main(args: Namespace):
         placeholder=not args.no_placeholder,
         weighted_layer_pred=args.weighted_layer_distribution,
         averaging_lr_factor=args.averaging_lr_factor,
+        distloss=args.distloss
     )
     if args.diffmask_checkpoint:
         diffmask = ImageInterpretationNet.load_from_checkpoint(

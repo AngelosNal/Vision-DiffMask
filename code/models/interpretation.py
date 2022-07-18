@@ -299,7 +299,6 @@ class ImageInterpretationNet(pl.LightningModule):
             layer_pred,
         ) = self.forward_explainer(x)
 
-
         if self.distloss == "KL":
             # Calculate KL-divergence
             distloss = torch.distributions.kl_divergence(
