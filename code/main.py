@@ -117,7 +117,13 @@ def main(args: Namespace):
         placeholder=not args.no_placeholder,
         weighted_layer_pred=args.weighted_layer_distribution,
         averaging_lr_factor=args.averaging_lr_factor,
-        distloss=args.distloss
+        distloss=args.distloss,
+        clip_max=args.clip_max,
+        weights_fn=args.weights_fn,
+        weights_normalization=args.weights_normalization,
+        learnable_avg_weights=args.learnable_avg_weights,
+        activation=args.activation,
+        normalize_attr=args.normalize_attr,
     )
     if args.diffmask_checkpoint:
         diffmask = ImageInterpretationNet.load_from_checkpoint(

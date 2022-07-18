@@ -5,6 +5,7 @@ https://github.com/nicola-decao/diffmask/blob/master/diffmask/models/gates.py
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from torch import Tensor
 from typing import Optional
@@ -46,6 +47,7 @@ class MLPMaxGate(nn.Module):
         input_size: int,
         hidden_size: int,
         bias: bool = True,
+        activation: str = "hardsigmoid",
     ):
         """
         This is an MLP with the following structure;
@@ -66,11 +68,20 @@ class MLPMaxGate(nn.Module):
             nn.utils.weight_norm(nn.Linear(input_size, hidden_size)),
             nn.Tanh(),
             nn.utils.weight_norm(nn.Linear(hidden_size, 1, bias=bias)),
-            nn.Hardsigmoid(),
+            self.get_activation_fn(activation),
         )
 
     def forward(self, *args: Tensor) -> Tensor:
         return self.f(torch.cat(args, -1))
+
+    @staticmethod
+    def get_activation_fn(activation: str) -> nn.Module:
+        if activation == "hardsigmoid":
+            return nn.Hardsigmoid()
+        elif activation == "tanh":
+            return nn.Tanh()
+        else:
+            raise ValueError(f"Unknown activation function {activation}")
 
 
 class DiffMaskGateInput(nn.Module):
@@ -84,6 +95,11 @@ class DiffMaskGateInput(nn.Module):
         gate_bias: bool = True,
         placeholder: bool = False,
         init_vector: Tensor = None,
+        weights_fn: str = None,
+        weights_normalization: bool = False,
+        learnable_avg_weights: bool = True,
+        activation: str = "hardsigmoid",
+        normalize_attr: bool = False,
     ):
         """This is a DiffMask module that masks the input of the first layer.
 
@@ -99,6 +115,11 @@ class DiffMaskGateInput(nn.Module):
         """
         super().__init__()
 
+        self.learnable_avg_weights = learnable_avg_weights
+        self.weights_fn = weights_fn
+        self.weights_normalization = weights_normalization
+        self.normalize_attr = normalize_attr
+
         # Create a ModuleList with the gates
         self.g_hat = nn.ModuleList(
             [
@@ -106,6 +127,7 @@ class DiffMaskGateInput(nn.Module):
                     hidden_size * 2,
                     hidden_attention,
                     gate_bias,
+                    activation,
                 )
                 for _ in range(num_hidden_layers)
             ]
@@ -148,30 +170,37 @@ class DiffMaskGateInput(nn.Module):
         # Calculate the expectation for the full gate probabilities
         # These act as votes for the masked positions
 
-        # Averaging
-        # TODO: only the last's layers attributions are correct due to the division
-        # gates_full = logits.cumsum(-1) / logits.shape[-1]
+        if self.learnable_avg_weights:
+            if self.weights_normalization:
+                # Learnable averaging with normalized weights
+                # TODO: only the last's layers attributions are correct due to normalization
+                if logits.shape[-1] > 1:
+                    min_w = self.averaging_weights[:, :, :logits.shape[-1]].min(dim=-1).values
+                    max_w = self.averaging_weights[:, :, :logits.shape[-1]].max(dim=-1).values
+                    normalized_weights = (self.averaging_weights[:, :, :logits.shape[-1]] - min_w) / (max_w - min_w)
+                    gates_full = torch.cumsum(logits * normalized_weights, dim=-1)
+                else:
+                    gates_full = logits
+            else:
+                # Learnable averaging
+                if self.weights_fn == 'relu':
+                    gates_full = torch.cumsum(logits * nn.functional.relu(self.averaging_weights[:, :, :logits.shape[-1]]),
+                                              dim=-1)
+                else:
+                    gates_full = torch.cumsum(logits * self.averaging_weights[:, :, :logits.shape[-1]], dim=-1)
+                gates_full /= nn.functional.relu(self.averaging_weights[:, :, :logits.shape[-1]]).cumsum(dim=-1)
+        else:
+            # Averaging
+            # TODO: only the last's layers attributions are correct due to the division
+            gates_full = logits.cumsum(-1) / logits.shape[-1]
 
-        # Learnable averaging
-        gates_full = torch.cumsum(logits * nn.functional.relu(self.averaging_weights[:, :, :logits.shape[-1]]), dim=-1)
-        gates_full /= nn.functional.relu(self.averaging_weights[:, :, :logits.shape[-1]]).cumsum(dim=-1)
 
-        # Learnable averaging with normalized weights
-        # TODO: only the last's layers attributions are correct due to normalization
-        # if logits.shape[-1] > 1:
-        #     min_w = self.averaging_weights[:, :, :logits.shape[-1]].min(dim=-1)[0]
-        #     max_w = self.averaging_weights[:, :, :logits.shape[-1]].max(dim=-1)[0]
-        #     normalized_weights = (self.averaging_weights[:, :, :logits.shape[-1]] - min_w) / (max_w - min_w)
-        #     gates_full = torch.cumsum(logits * normalized_weights, dim=-1)
-        # else:
-        #     gates_full = logits
-
-        # Normalize to 0-1
-        # gates_full = logits.cumsum(-1)
-        # min_attr = gates_full.min(dim=-2, keepdims=True).values
-        # max_attr = gates_full.max(dim=-2, keepdims=True).values
-        # gates_full = (gates_full - min_attr) / (max_attr - min_attr)
-
+        if self.normalize_attr:
+            # Normalize to 0-1
+            gates_full = logits.cumsum(-1)
+            min_attr = gates_full.min(dim=-2, keepdims=True).values
+            max_attr = gates_full.max(dim=-2, keepdims=True).values
+            gates_full = (gates_full - min_attr) / (max_attr - min_attr)
 
         if aggregated:
             expected_L0_full = gates_full

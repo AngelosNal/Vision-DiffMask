@@ -77,6 +77,34 @@ class ImageInterpretationNet(pl.LightningModule):
             default=1,
             help="Learning rate factor for the averaging weights.",
         )
+        parser.add_argument(
+            "--weights_fn",
+            type=str,
+            default=None,
+            help="Function for the averaging weights.",
+        )
+        parser.add_argument(
+            "--weights_normalization",
+            action="store_true",
+            help="Whether to normalize the weights.",
+        )
+        parser.add_argument(
+            "--learnable_avg_weights",
+            action="store_true",
+            help="Whether to learn the averaging weights.",
+        )
+        parser.add_argument(
+            "--activation",
+            type=str,
+            default="hardsigmoid",
+            help="Activation function for the averaging weights.",
+        )
+        parser.add_argument(
+            "--normalize_attr",
+            action="store_true",
+            help="Whether to normalize the attributes.",
+        )
+
         return parent_parser
 
     # Declare variables that will be initialized later
@@ -95,8 +123,13 @@ class ImageInterpretationNet(pl.LightningModule):
         placeholder: bool = True,
         weighted_layer_pred: bool = False,
         averaging_lr_factor: float = 1,
-        clip_max: Optional[float] = 200.,
+        clip_max: float = 200.,
         distloss: str = "KL",
+        weights_fn: str = None,
+        weights_normalization: bool = False,
+        learnable_avg_weights: bool = True,
+        activation: str = "hardsigmoid",
+        normalize_attr: bool = False,
     ):
         """A PyTorch Lightning Module for the VisionDiffMask model on the Vision Transformer.
 
@@ -124,6 +157,11 @@ class ImageInterpretationNet(pl.LightningModule):
             num_hidden_layers=model_cfg.num_hidden_layers + 1,
             max_position_embeddings=1,
             placeholder=placeholder,
+            weights_fn=weights_fn,
+            weights_normalization=weights_normalization,
+            learnable_avg_weights=learnable_avg_weights,
+            activation=activation,
+            normalize_attr=normalize_attr,
         )
 
         # Create the Lagrangian values for the dual optimization
