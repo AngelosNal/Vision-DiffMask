@@ -1,10 +1,16 @@
-# Vision DiffMask: Interpretability of Computer Vision models with Differentiable Patch Masking
+# VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking
 
 ## Overview
-This repository contains *Vision DiffMask*, a post-hoc interpretation method for vision tasks. It is an adaptation of
-[DiffMask](https://arxiv.org/pdf/2004.14992.pdf) **[1]** for the
-vision domain, and is heavily inspired by [its original PyTorch
-implementation](https://github.com/nicola-decao/diffmask).
+This repository contains the official PyTorch implementation of the paper **"VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking"**
+
+
+[//]: # (This repository contains *Vision DiffMask*, a post-hoc interpretation method for vision tasks. It is an adaptation of)
+
+[//]: # ([DiffMask]&#40;https://arxiv.org/pdf/2004.14992.pdf&#41; **[1]** for the)
+
+[//]: # (vision domain, and is heavily inspired by [its original PyTorch)
+
+[//]: # (implementation]&#40;https://github.com/nicola-decao/diffmask&#41;.)
 
 Given a pre-trained model, Vision DiffMask predicts the minimal subset of the input required to maintain the original output distribution. Currently, only Vision Transformer (ViT) **[2]** for image classification is supported.
 
