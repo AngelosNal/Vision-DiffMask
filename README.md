@@ -1,18 +1,17 @@
 # VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking
 
-## Overview
+
+:page_with_curl: [**[Paper]**](https://arxiv.org/abs/2304.06391)&nbsp;
+:rocket: [**[Demo]**](https://huggingface.co/spaces/j0hngou/vision-diffmask)&nbsp;&nbsp;
+:floppy_disk: [**[Checkpoints]**](https://archive.org/download/vision-diffmask-ckpts)
+
 This repository contains the official PyTorch implementation of the paper **"VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking"**
+by Angelos Nalmpantis*, Apostolos Panagiotopoulos*, John Gkountouras*, Konstantinos Papakostas* and Wilker Aziz (CVPRW XAI4CV 2023)
 
-
-[//]: # (This repository contains *Vision DiffMask*, a post-hoc interpretation method for vision tasks. It is an adaptation of)
-
-[//]: # ([DiffMask]&#40;https://arxiv.org/pdf/2004.14992.pdf&#41; **[1]** for the)
-
-[//]: # (vision domain, and is heavily inspired by [its original PyTorch)
-
-[//]: # (implementation]&#40;https://github.com/nicola-decao/diffmask&#41;.)
-
-Given a pre-trained model, Vision DiffMask predicts the minimal subset of the input required to maintain the original output distribution. Currently, only Vision Transformer (ViT) **[2]** for image classification is supported.
+## Overview
+*Vision DiffMask* is a post-hoc interpretation method for vision tasks. 
+Given a pre-trained model, it predicts the minimal subset of the input required to maintain the original output distribution. 
+Currently, only Vision Transformer (ViT) for image classification is supported.
 
 ![Alt text](https://github.com/AngelosNal/Vision-DiffMask/blob/master/vizdiffmask_model.png?raw=true)
 
@@ -25,37 +24,30 @@ conda env create -f environment.yml
 ## Project Structure
 The project is organized in the following way:
 ```
-.
-├── code                                Main entry point for Vision DiffMask
-│   ├── attributions                    Re-implementation of other attribution methods
-│   │   ├── attention_rollout.py        Attention Rollout (Abnar and Zuidema, 2019)
-│   │   └── grad_cam.py                 Grad-CAM (Selvaraju et al., 2016)
-│   ├── datamodules                     PL Datamodules for vision datasets
-│   │   ├── base.py                     Base image datamodule
-│   │   ├── image_classification.py     MNIST and CIFAR-10 datamodules
-│   │   ├── transformations.py          Image transformations for torchvision
-│   │   ├── utils.py                    Utilities for loading datamodules
-│   │   └── visual_qa.py                Datamodule for the toy task of counting patches
-│   ├── eval_base.py                    Evaluation script for a base vision model
-│   ├── main.py                         Training script for the Vision DiffMask model
-│   ├── models                          PL Modules for classification models & Vision DiffMask
-│   │   ├── classification.py           Module for image classification
-│   │   ├── gates.py                    Gating mechanisms for Vision DiffMask
-│   │   ├── interpretation.pt           Main module for Vision DiffMask
-│   │   └── utils.py                    Utilities for loading models
-│   ├── train_base.py                   Training script for a base vision model
-│   └── utils                           Various utilities and auxiliary classes
-│       ├── distributions.py            Distributions used by Vision DiffMask
-│       ├── getters_setters.py          Hooks for the base models used by Vision DiffMask
-│       ├── metrics.py                  Metrics used for training and evaluation
-│       ├── optimizer.py                Optimizers used by Vision DiffMask
-│       └── plot.py                     Functions and callbacks for visualization
-└── experiments                         Notebooks for experiment replication
-    ├── diffmask_visualization.ipynb    Visualization of Vision Diffmask on sample images
-    ├── inference_time.ipynb            Comparison of inference time with other methods
-    ├── qualitative_comparison.ipynb    Qualitative comparison with other methods
-    ├── quantitative_comparison.ipynb   Quantitative comparison with other methods
-    └── toy_dataset.ipynb               Faithfulness verification on the toy task
+.                                                       
+├── code                                                             
+│   ├── attributions/                                                                           
+│   ├── datamodules
+│   │   ├── base.py 
+│   │   ├── image_classification.py
+│   │   ├── transformations.py
+│   │   ├── utils.py
+│   │   └── visual_qa.py
+│   ├── eval_base.py
+│   ├── main.py
+│   ├── models
+│   │   ├── classification.py
+│   │   ├── gates.py
+│   │   ├── interpretation.py
+│   │   └── utils.py
+│   ├── train_base.py
+│   └── utils
+│       ├── distributions.py
+│       ├── getters_setters.py
+│       ├── metrics.py
+│       ├── optimizer.py
+│       └── plot.py
+├── experiments/
 ```
 
 ## Training
@@ -203,20 +195,45 @@ Visual QA:
 ```
 </details>
 
-## Model Checkpoints
-To facilitate the reproducibility of our results, we provide a set of pre-trained checkpoints
-[here](https://archive.org/download/vision-diffmask-ckpts).
+[//]: # ()
+[//]: # (## Model Checkpoints)
 
-For the toy task, we provide both a pre-trained instance of the Vision Transformer, along with
-the trained Vision DiffMask model. For the image classification task on CIFAR-10, we provide the
-trained Vision DiffMask model, as the pre-trained ViT can be found on
-[HuggingFace](https://huggingface.co/tanlq/vit-base-patch16-224-in21k-finetuned-cifar10).
+[//]: # (To facilitate the reproducibility of our results, we provide a set of pre-trained checkpoints)
+
+[//]: # ([here]&#40;https://archive.org/download/vision-diffmask-ckpts&#41;.)
+
+[//]: # ()
+[//]: # (For the toy task, we provide both a pre-trained instance of the Vision Transformer, along with)
+
+[//]: # (the trained Vision DiffMask model. For the image classification task on CIFAR-10, we provide the)
+
+[//]: # (trained Vision DiffMask model, as the pre-trained ViT can be found on)
+
+[//]: # ([HuggingFace]&#40;https://huggingface.co/tanlq/vit-base-patch16-224-in21k-finetuned-cifar10&#41;.)
 
 ## Contributing
 This project is licensed under the [MIT license](LICENSE).
 
-## References
-**[1]** De Cao, N., Schlichtkrull, M. S., Aziz, W., & Titov, I. (2020, November). How do Decisions Emerge across Layers in Neural Models? Interpretation with Differentiable Masking. In _Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)_ (pp. 3243-3255).
+## Acknowledgements
+*Vision DiffMask* is an adaptation of [DiffMask](https://arxiv.org/pdf/2004.14992.pdf) in the vision domain. 
+Parts of the code are heavilty inspired from [its original PyTorch implementation](https://github.com/nicola-decao/diffmask).
 
-**[2]** Alexander K., Alexey D., Dirk W., Georg H., Jakob U., Lucas B., Matthias M., Mostafa D., Neil H. Sylvain G., Thomas U., Xiaohua Z., (2021). An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. In the Ninth International Conference on Learning Representations (ICLR).
+[//]: # (## References)
 
+[//]: # (**[1]** Alexander K., Alexey D., Dirk W., Georg H., Jakob U., Lucas B., Matthias M., Mostafa D., Neil H. Sylvain G., Thomas U., Xiaohua Z., &#40;2021&#41;. An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale. In the Ninth International Conference on Learning Representations &#40;ICLR&#41;.)
+
+[//]: # ()
+[//]: # (**[2]** De Cao, N., Schlichtkrull, M. S., Aziz, W., & Titov, I. &#40;2020, November&#41;. How do Decisions Emerge across Layers in Neural Models? Interpretation with Differentiable Masking. In _Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing &#40;EMNLP&#41;_ &#40;pp. 3243-3255&#41;.)
+
+## Citation
+If you use this code or find our work otherwise useful, please consider citing our paper:
+```
+@misc{nalmpantis2023vision,
+      title={VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking}, 
+      author={Angelos Nalmpantis and Apostolos Panagiotopoulos and John Gkountouras and Konstantinos Papakostas and Wilker Aziz},
+      year={2023},
+      eprint={2304.06391},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
