@@ -228,12 +228,11 @@ Parts of the code are heavilty inspired from [its original PyTorch implementatio
 ## Citation
 If you use this code or find our work otherwise useful, please consider citing our paper:
 ```
-@misc{nalmpantis2023vision,
-      title={VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking}, 
-      author={Angelos Nalmpantis and Apostolos Panagiotopoulos and John Gkountouras and Konstantinos Papakostas and Wilker Aziz},
-      year={2023},
-      eprint={2304.06391},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV}
+@inproceedings{nalmpantis2023vision,
+  title={VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking},
+  author={Nalmpantis, Angelos and Panagiotopoulos, Apostolos and Gkountouras, John and Papakostas, Konstantinos and Aziz, Wilker},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={3755--3762},
+  year={2023}
 }
 ```
