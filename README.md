@@ -1,9 +1,7 @@
 # VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking
 
 
-:page_with_curl: [**[Paper]**](https://arxiv.org/abs/2304.06391)&nbsp;
-:rocket: [**[Demo]**](https://huggingface.co/spaces/j0hngou/vision-diffmask)&nbsp;&nbsp;
-:floppy_disk: [**[Checkpoints]**](https://archive.org/download/vision-diffmask-ckpts)
+:page_with_curl: [**[Paper]**](https://arxiv.org/abs/2304.06391)&nbsp; :rocket: [**[Demo]**](https://huggingface.co/spaces/j0hngou/vision-diffmask)&nbsp;&nbsp; :floppy_disk: [**[Checkpoints]**](https://archive.org/download/vision-diffmask-ckpts)
 
 This repository contains the official PyTorch implementation of the paper **"VISION DIFFMASK: Faithful Interpretation of Vision Transformers with Differentiable Patch Masking"**
 by Angelos Nalmpantis*, Apostolos Panagiotopoulos*, John Gkountouras*, Konstantinos Papakostas* and Wilker Aziz (CVPRW XAI4CV 2023)
